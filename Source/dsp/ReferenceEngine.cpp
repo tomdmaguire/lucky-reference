@@ -14,7 +14,7 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
     mixMeter.prepare (rate);
     lastMeasuredSeconds = 0.0;
     mixLoudness.store (silentLufs);
-    scratch.setSize (2, maximumBlockSize, false, false, true);
+    scratch.setSize (2, std::max (1, maximumBlockSize), false, false, true);
 
     mixFader.level.reset (rate, sourceFadeSeconds);
     mixFader.level.setCurrentAndTargetValue (1.0f);
@@ -166,12 +166,16 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
 
         auto* refLeft = scratch.getWritePointer (0);
         auto* refRight = scratch.getWritePointer (1);
-        players[slot].render (refLeft, refRight, n);
-        for (int i = 0; i < n; ++i)
+        for (int offset = 0; offset < n; offset += scratch.getNumSamples())
         {
-            const auto amplitude = fader.next() * juce::Decibels::decibelsToGain (gain.getNextValue());
-            left[i] += refLeft[i] * amplitude;
-            right[i] += refRight[i] * amplitude;
+            const auto chunk = std::min (scratch.getNumSamples(), n - offset);
+            players[slot].render (refLeft, refRight, chunk);
+            for (int i = 0; i < chunk; ++i)
+            {
+                const auto amplitude = fader.next() * juce::Decibels::decibelsToGain (gain.getNextValue());
+                left[offset + i] += refLeft[i] * amplitude;
+                right[offset + i] += refRight[i] * amplitude;
+            }
         }
     }
 }

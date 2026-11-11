@@ -115,6 +115,22 @@ public:
             expectWithinAbsoluteError (loudnessOfEnd (output, 2.0), -14.0f, 0.2f);
         }
 
+        beginTest ("Blocks larger than announced are processed in full");
+        {
+            Harness harness;
+            harness.engine.setSlot (0, loudReference, {});
+            harness.controls = { true, 0, false };
+            juce::AudioBuffer<float> big (2, blockSize * 5);
+            big.clear();
+            for (int pass = 0; pass < 4; ++pass)
+            {
+                harness.engine.process (big, harness.controls, harness.transport);
+                harness.advance (big.getNumSamples());
+            }
+            expect (big.getMagnitude (0, big.getNumSamples() - blockSize, blockSize) > 0.1f);
+            expectEquals (harness.engine.getPosition (0), juce::int64 { blockSize * 20 });
+        }
+
         beginTest ("Before the mix has been measured, the reference is not turned");
         {
             Harness harness;
