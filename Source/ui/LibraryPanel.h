@@ -6,8 +6,9 @@
 namespace lucky
 {
 
-/** The reference library, shown over the slot rows: a search box, the library's tracks (favourites first, with a
-    heart to toggle), and buttons to browse for a file instead or close. Choosing a track loads it into the target slot. */
+/** The reference library, shown over the slot rows: a search box, the library's tracks sorted by name or by how close
+    they sound to the mix, and on every row a 1 2 3 button per slot to load the track into. Files added here, by
+    ADD FILES or by dropping them on the panel, are copied into the library. */
 class LibraryPanel final : public juce::Component,
                            public juce::FileDragAndDropTarget,
                            private juce::ListBoxModel,
@@ -16,56 +17,50 @@ class LibraryPanel final : public juce::Component,
                            private juce::Timer
 {
 public:
+    static constexpr int numSlots = 3;
+
     explicit LibraryPanel (ReferenceLibrary& library);
     ~LibraryPanel() override;
 
-    /** Called with the chosen file, from a double-click, Return or a file dropped on the panel. */
-    std::function<void (const juce::File&)> onChoose;
+    /** Called to load a library track into a slot (0-2). */
+    std::function<void (int slot, const juce::File&)> onChoose;
 
-    /** Called when "Browse files..." is clicked. */
-    std::function<void()> onBrowse;
+    /** Returns the file loaded in a slot, so each row can show which slots hold it. */
+    std::function<juce::File (int slot)> slotFile;
 
-    /** Called when the panel asks to close (close button or Escape). */
+    /** Called when Escape is pressed with an empty search, to leave the library. */
     std::function<void()> onClose;
-
-    /** Returns the slot (0-2) a file is loaded in, or -1, so the list can mark loaded tracks. */
-    std::function<int (const juce::File&)> slotOf;
 
     /** The mix's tonal profile once enough has been heard, for sorting by closest match. */
     std::function<std::optional<TonalProfile>()> mixProfile;
 
-    /** Seconds of the mix heard so far, for the "play your mix" hint. */
+    /** Seconds of the mix heard so far, for the "play your mix" message. */
     std::function<double()> mixSeconds;
 
     /** Seconds of the mix needed before it can be compared. */
     double mixSecondsNeeded = 20.0;
 
-    /** True while at least one slot is empty, so SUGGEST has somewhere to load. */
-    std::function<bool()> hasEmptySlot;
-
-    /** Called when SUGGEST is clicked: fill the empty slots with the closest matches. */
-    std::function<void()> onSuggest;
-
-    /** The slot a chosen track goes into, shown in the header in that slot's colour. */
-    void setTarget (int slot);
-
-    /** Rescans the library, highlights the target slot's current track (else the first), selects the search text and
-        focuses the search box. */
-    void opened (const juce::File& current);
+    /** Rescans the library, selects the search text and focuses the search box. */
+    void opened();
 
     /** Stops the periodic rescan. */
     void closed();
 
-    /** Sorts by closest match to the mix (true) or favourites then name (false). */
+    /** Sorts by closest match to the mix (true) or by name (false). */
     void setClosest (bool closest);
 
-    /** Redraws the markers showing which tracks are loaded, after the slots change. */
+    /** Redraws the slot buttons after the slots change. */
     void slotsChanged() { list.repaint(); }
+
+    /** Copies files into the library in the background, then rescans. */
+    void addFiles (const juce::Array<juce::File>& files);
 
     void paint (juce::Graphics&) override;
     void paintOverChildren (juce::Graphics&) override;
     void resized() override;
     bool keyPressed (const juce::KeyPress&) override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
 
     bool isInterestedInFileDrag (const juce::StringArray& files) override;
     void filesDropped (const juce::StringArray& files, int, int) override;
@@ -82,24 +77,33 @@ private:
     void timerCallback() override;
 
     void refresh();
-    void updateSuggestButton();
+    void updateVisibility();
+    bool waitingForMix() const;
     juce::String hintText() const;
-    void chooseRow (int row);
-    void showEmptyState();
-    juce::Rectangle<int> heartArea (int width, int height) const;
+    void chooseRow (int row, int slot);
+    /** Loads a row into the first empty slot, or explains that every slot is full. */
+    void chooseRowIntoEmptySlot (int row);
+    void showNotice (const juce::String& text);
+    void browseForFiles();
+    juce::Rectangle<float> slotButtonArea (int slot, int width, int height) const;
+    int slotButtonAt (juce::Point<int> positionInRow, int width, int height) const;
 
     ReferenceLibrary& library;
     std::vector<LibraryEntry> shown;
-    int totalEntries = 0, analysedEntries = 0, profiledEntries = 0;
-    int target = 0;
+    int totalEntries = 0, analysedEntries = 0;
     int ticks = 0;
     bool sortClosest = false;
     /** The mix profile the list was last ranked against; kept fixed so rows don't move while you browse. */
     std::optional<TonalProfile> rankedAgainst;
+    int hoverRow = -1, hoverSlot = -1;
+    juce::String notice;
+    juce::uint32 noticeUntil = 0;
+    juce::Array<juce::File> importing;
     juce::TextEditor searchBox;
-    juce::TextButton clearSearchButton, browseButton { "BROWSE..." }, finderButton { "SHOW IN FINDER" }, closeButton;
-    juce::TextButton nameOrderButton { "A-Z" }, closestOrderButton { "CLOSEST" }, suggestButton { "SUGGEST" };
+    juce::TextButton clearSearchButton, addButton { "ADD FILES..." }, finderButton { "SHOW IN FINDER" };
+    juce::TextButton nameOrderButton { "A-Z" }, closestOrderButton { "CLOSEST" };
     juce::ListBox list { "Library", this };
+    std::unique_ptr<juce::FileChooser> chooser;
 };
 
 } // namespace lucky

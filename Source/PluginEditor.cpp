@@ -10,7 +10,7 @@ constexpr std::array<float, 4> scalePresets { 1.0f, 1.25f, 1.5f, 1.75f };
 constexpr int topBarHeight = 48;
 constexpr int logoWidth = 240;
 constexpr int iconWidth = 52;
-constexpr int libraryButtonWidth = 112;
+constexpr int tabWidth = 104;
 constexpr int gutter = 24;
 constexpr int rowHeight = 100;
 constexpr int hintHeight = 28;
@@ -67,49 +67,35 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
             grabKeyboardFocus();
             slotAttachment.setValueAsCompleteGesture (static_cast<float> (i));
         };
-        rows[static_cast<size_t> (i)]->onOpenLibrary = [this] { openLibrary(); };
         addAndMakeVisible (*rows[static_cast<size_t> (i)]);
     }
 
-    libraryPanel.onChoose = [this] (const juce::File& file)
-    {
-        owner.loadFile (selectedSlot, file);
-        closeLibrary();
-    };
-    libraryPanel.onBrowse = [this]
-    {
-        closeLibrary();
-        rows[static_cast<size_t> (selectedSlot)]->browse();
-    };
+    libraryPanel.onChoose = [this] (int slot, const juce::File& file) { owner.loadFile (slot, file); };
+    libraryPanel.slotFile = [this] (int slot) { return owner.getFile (slot); };
     libraryPanel.onClose = [this] { closeLibrary(); };
-    libraryPanel.slotOf = [this] (const juce::File& file)
-    {
-        for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
-            if (owner.getFile (i) == file)
-                return i;
-        return -1;
-    };
     libraryPanel.mixProfile = [this] { return owner.getMixProfile(); };
     libraryPanel.mixSeconds = [this] { return owner.getMixProfileSeconds(); };
     libraryPanel.mixSecondsNeeded = LuckyReferenceProcessor::mixProfileReadySeconds;
-    libraryPanel.hasEmptySlot = [this]
-    {
-        for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
-            if (owner.getFile (i) == juce::File())
-                return true;
-        return false;
-    };
-    libraryPanel.onSuggest = [this]
-    {
-        owner.suggestReferences();
-        closeLibrary();
-    };
     addChildComponent (libraryPanel);
 
-    libraryButton.setWantsKeyboardFocus (false);
-    libraryButton.setTooltip ("Choose references from your library");
-    libraryButton.onClick = [this] { libraryPanel.isVisible() ? closeLibrary() : openLibrary(); };
-    addAndMakeVisible (libraryButton);
+    for (auto* tab : { &refsTab, &libraryTab })
+    {
+        tab->setRadioGroupId (7001);
+        tab->setWantsKeyboardFocus (false);
+        tab->setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::mixColour);
+        addAndMakeVisible (*tab);
+    }
+    refsTab.setTooltip ("Your three references");
+    libraryTab.setTooltip ("Choose references from your library");
+    refsTab.onClick = [this] { closeLibrary(); };
+    libraryTab.onClick = [this] { openLibrary(); };
+    refsTab.setToggleState (true, juce::dontSendNotification);
+
+    logoButton.setWantsKeyboardFocus (false);
+    logoButton.setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    logoButton.setTooltip ("Back to your references");
+    logoButton.onClick = [this] { closeLibrary(); };
+    addAndMakeVisible (logoButton);
 
     radar.levelSource = [this]
     {
@@ -168,6 +154,12 @@ bool LuckyReferenceView::keyPressed (const juce::KeyPress& key)
         return true;
     }
 
+    if ((key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) && ! libraryPanel.isVisible())
+    {
+        owner.clearSlot (selectedSlot);
+        return true;
+    }
+
     const auto character = key.getTextCharacter();
     if (character >= '1' && character < '1' + LuckyReferenceProcessor::numSlots)
     {
@@ -181,17 +173,21 @@ void LuckyReferenceView::openLibrary (bool closest)
 {
     if (closest)
         libraryPanel.setClosest (true);
-    libraryPanel.setTarget (selectedSlot);
+    settings->setOpenedLibrary();
+    libraryTab.setToggleState (true, juce::dontSendNotification);
+    if (libraryPanel.isVisible())
+        return;
     libraryPanel.setVisible (true);
-    libraryButton.setToggleState (true, juce::dontSendNotification);
-    libraryPanel.opened (owner.getFile (selectedSlot));
+    libraryPanel.opened();
+    for (auto& row : rows)
+        row->repaint();
 }
 
 void LuckyReferenceView::closeLibrary()
 {
     libraryPanel.closed();
     libraryPanel.setVisible (false);
-    libraryButton.setToggleState (false, juce::dontSendNotification);
+    refsTab.setToggleState (true, juce::dontSendNotification);
     grabKeyboardFocus();
 }
 
@@ -218,8 +214,6 @@ void LuckyReferenceView::syncControls()
 {
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
     matchButton.setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::slotColour (selectedSlot));
-    libraryButton.setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::slotColour (selectedSlot));
-    libraryPanel.setTarget (selectedSlot);
 
     if (controlsSynced && (referenceOn != sourceSwitchShowsReference || selectedSlot != shownSlot))
     {
@@ -295,7 +289,7 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.drawText ("LUCKY REFERENCE", logo.withTrimmedLeft (12.0f), juce::Justification::centredLeft);
 
     g.setColour (theme::background);
-    for (const auto x : { logoWidth, getWidth() - iconWidth - libraryButtonWidth, getWidth() - iconWidth })
+    for (const auto x : { logoWidth, getWidth() - iconWidth - tabWidth * 2 - 1, getWidth() - iconWidth })
         g.fillRect (x, 0, 1, topBarHeight);
 
     const auto stage = getLocalBounds().withTop (stageTop());
@@ -305,7 +299,8 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.fillRect (stage.getX(), stage.getY(), stage.getWidth(), 1);
 
 
-    paintShortcutHint (g, stage.withTop (stage.getBottom() - hintHeight).withTrimmedBottom (8).toFloat());
+    if (! libraryPanel.isVisible())
+        paintShortcutHint (g, stage.withTop (stage.getBottom() - hintHeight).withTrimmedBottom (8).toFloat());
 }
 
 void LuckyReferenceView::paintShortcutHint (juce::Graphics& g, juce::Rectangle<float> area)
@@ -369,7 +364,7 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
     if (track == nullptr)
     {
         headline = "No reference";
-        detail = "Click slot " + juce::String (selectedSlot + 1) + " to choose one";
+        detail = "Drop or choose a track for reference " + juce::String (selectedSlot + 1);
         headlineColour = theme::textDim;
     }
     else if (! std::isfinite (mix))
@@ -410,8 +405,10 @@ void LuckyReferenceView::resized()
 {
     auto bounds = getLocalBounds();
     auto topBar = bounds.removeFromTop (topBarHeight);
+    logoButton.setBounds (topBar.removeFromLeft (logoWidth));
     menuButton.setBounds (topBar.removeFromRight (iconWidth));
-    libraryButton.setBounds (topBar.removeFromRight (libraryButtonWidth).withTrimmedLeft (1));
+    libraryTab.setBounds (topBar.removeFromRight (tabWidth));
+    refsTab.setBounds (topBar.removeFromRight (tabWidth).withTrimmedLeft (1));
 
     auto area = bounds.withBottom (stageTop()).reduced (gutter, gutter * 2 / 3);
     libraryPanel.setBounds (area);
@@ -443,14 +440,42 @@ void LuckyReferenceView::showMenu()
     menu.addSeparator();
     menu.addItem ("Put it last on your master, after any limiter", false, false, [] {});
     menu.addItem ("Exports always contain your mix", false, false, [] {});
+    auto& library = owner.getLibrary();
+    const auto root = library.getRoot();
+    juce::PopupMenu folders;
+    folders.addItem ("Add a folder...", [this] { chooseLibraryFolder(); });
+    folders.addItem ("Rescan all folders", [&library] { library.rescan(); });
+    folders.addSeparator();
+    juce::PopupMenu mainFolder;
+    mainFolder.addItem ("Show in Finder", [root] { root.revealToUser(); });
+    folders.addSubMenu (root.getFullPathName() + " (main)", mainFolder);
+    for (const auto& extra : library.getFolders())
+    {
+        juce::PopupMenu actions;
+        actions.addItem ("Show in Finder", extra.exists(), false, [extra] { extra.revealToUser(); });
+        actions.addItem ("Remove from Lucky Reference", [&library, extra] { library.removeFolder (extra); });
+        folders.addSubMenu (extra.getFullPathName() + (extra.isDirectory() ? juce::String() : " (missing)"), actions);
+    }
+    menu.addSubMenu ("Library folders", folders);
+
     menu.addSeparator();
-    menu.addItem ("Show library in Finder", [this] { owner.getLibrary().getRoot().revealToUser(); });
     menu.addItem ("Remove all references", [this]
                   {
                       for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
                           owner.clearSlot (i);
                   });
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&menuButton));
+}
+
+void LuckyReferenceView::chooseLibraryFolder()
+{
+    folderChooser = std::make_unique<juce::FileChooser> ("Add a folder to your library", juce::File::getSpecialLocation (juce::File::userMusicDirectory));
+    folderChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                                [this] (const juce::FileChooser& finished)
+                                {
+                                    if (const auto folder = finished.getResult(); folder.isDirectory())
+                                        owner.getLibrary().addFolder (folder);
+                                });
 }
 
 LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorToEdit)

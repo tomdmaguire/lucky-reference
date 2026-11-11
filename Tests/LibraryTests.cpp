@@ -103,20 +103,47 @@ public:
             expectEquals (keysOf (library.getEntries()).joinIntoString (","), juce::String ("Bravo.wav,Club/Charlie Night.wav,Delta.wav"));
         }
 
-        beginTest ("Favourites sort first and are remembered");
+        beginTest ("Added folders are indexed where they are, remembered, and can be removed");
         {
+            const auto albums = folder.getChildFile ("Album Refs");
+            albums.getChildFile ("Disc 1").createDirectory();
+            test::writeWav (albums.getChildFile ("Disc 1").getChildFile ("Golf.wav"), test::sine (-12.0f, 1.0, rate), rate);
+            const auto golf = albums.getChildFile ("Disc 1").getChildFile ("Golf.wav");
             {
                 ReferenceLibrary library (root, state);
-                library.toggleFavourite ("Delta.wav");
+                expect (! library.contains (golf));
+                library.addFolder (albums);
+                library.addFolder (albums.getChildFile ("Disc 1"));
+                library.addFolder (root.getChildFile ("Club"));
+                expectEquals (library.getFolders().size(), 1, "folders already covered are not added again");
+                expect (library.contains (golf));
+                expect (waitUntilRead (library));
                 const auto entries = library.getEntries();
-                expectEquals (entries.front().key, juce::String ("Delta.wav"));
-                expect (entries.front().favourite);
+                const auto* entry = findEntry (entries, golf.getFullPathName());
+                expect (entry != nullptr);
+                expectEquals (entry->folder, juce::String ("Album Refs/Disc 1"));
+                expect (entry->profile.has_value());
+            }
+
+            {
+                ReferenceLibrary library (root, state);
+                library.addFolder (folder);
+                expect (waitUntilRead (library));
+                const auto entries = library.getEntries();
+                expectEquals (static_cast<int> (std::count_if (entries.begin(), entries.end(), [] (const LibraryEntry& entry) { return entry.name == "Bravo"; })), 1,
+                              "a folder holding the main folder doesn't list its tracks twice");
+                expect (library.getFolders() == juce::Array<juce::File> { folder }, "a parent folder replaces the added folders inside it");
+                library.removeFolder (folder);
+                library.addFolder (albums);
             }
 
             ReferenceLibrary library (root, state);
-            expectEquals (library.getEntries().front().key, juce::String ("Delta.wav"));
-            library.toggleFavourite ("Delta.wav");
-            expect (! findEntry (library.getEntries(), "Delta.wav")->favourite);
+            expectEquals (library.getFolders().size(), 1, "added folders are remembered");
+            expect (findEntry (library.getEntries(), golf.getFullPathName()) != nullptr);
+            library.removeFolder (albums);
+            expect (findEntry (library.getEntries(), golf.getFullPathName()) == nullptr);
+            expect (golf.existsAsFile(), "removing a folder leaves its files alone");
+            expect (! library.contains (golf));
         }
 
         beginTest ("Search needs every word in the name or folder, ignoring case");

@@ -53,8 +53,6 @@ juce::File defaultStateFolder()
 
 bool libraryOrder (const LibraryEntry& a, const LibraryEntry& b)
 {
-    if (a.favourite != b.favourite)
-        return a.favourite;
     if (const auto byName = a.name.compareNatural (b.name); byName != 0)
         return byName < 0;
     return a.key.compareNatural (b.key) < 0;
@@ -67,7 +65,7 @@ ReferenceLibrary::ReferenceLibrary (const juce::File& libraryRoot, const juce::F
     : juce::Thread ("Lucky Reference library"),
       root (libraryRoot),
       cacheFile (stateFolder.getChildFile ("library-cache.json")),
-      favouritesFile (stateFolder.getChildFile ("favourites.json"))
+      foldersFile (stateFolder.getChildFile ("folders.json"))
 {
     loadState();
     rescan();
@@ -81,7 +79,44 @@ ReferenceLibrary::~ReferenceLibrary()
 
 bool ReferenceLibrary::contains (const juce::File& file) const
 {
-    return file.isAChildOf (root);
+    if (file.isAChildOf (root))
+        return true;
+    for (const auto& folder : getFolders())
+        if (file.isAChildOf (folder))
+            return true;
+    return false;
+}
+
+juce::Array<juce::File> ReferenceLibrary::getFolders() const
+{
+    const juce::ScopedLock scope (lock);
+    return folders;
+}
+
+void ReferenceLibrary::addFolder (const juce::File& folder)
+{
+    {
+        const juce::ScopedLock scope (lock);
+        if (! folder.isDirectory() || folder == root || folder.isAChildOf (root) || folders.contains (folder))
+            return;
+        for (const auto& existing : folders)
+            if (folder.isAChildOf (existing))
+                return;
+        folders.removeIf ([&folder] (const juce::File& existing) { return existing.isAChildOf (folder); });
+        folders.add (folder);
+    }
+    saveFolders();
+    rescan();
+}
+
+void ReferenceLibrary::removeFolder (const juce::File& folder)
+{
+    {
+        const juce::ScopedLock scope (lock);
+        folders.removeAllInstancesOf (folder);
+    }
+    saveFolders();
+    rescan();
 }
 
 juce::String ReferenceLibrary::cacheKey (const juce::File& file, const juce::String& key)
@@ -95,26 +130,35 @@ void ReferenceLibrary::rescan()
     root.createDirectory();
 
     std::vector<LibraryEntry> scanned;
-    for (const auto& item : juce::RangedDirectoryIterator (root, true, audioExtensions, juce::File::findFiles))
+    const auto scan = [this, &scanned] (const juce::File& folder, bool isMain)
     {
-        const auto& file = item.getFile();
-        if (file.isHidden() || file.getFileName().startsWithChar ('.'))
-            continue;
+        if (! folder.isDirectory())
+            return;
+        for (const auto& item : juce::RangedDirectoryIterator (folder, true, audioExtensions, juce::File::findFiles))
+        {
+            const auto& file = item.getFile();
+            if (file.isHidden() || file.getFileName().startsWithChar ('.') || (! isMain && file.isAChildOf (root)))
+                continue;
 
-        LibraryEntry entry;
-        entry.file = file;
-        entry.key = file.getRelativePathFrom (root).replaceCharacter ('\\', '/');
-        entry.name = file.getFileNameWithoutExtension();
-        entry.folder = entry.key.containsChar ('/') ? entry.key.upToLastOccurrenceOf ("/", false, false) : juce::String();
-        scanned.push_back (std::move (entry));
-    }
+            const auto relative = file.getRelativePathFrom (folder).replaceCharacter ('\\', '/');
+            const auto subfolder = relative.containsChar ('/') ? relative.upToLastOccurrenceOf ("/", false, false) : juce::String();
+            LibraryEntry entry;
+            entry.file = file;
+            entry.key = isMain ? relative : file.getFullPathName();
+            entry.name = file.getFileNameWithoutExtension();
+            entry.folder = isMain ? subfolder : folder.getFileName() + (subfolder.isEmpty() ? juce::String() : "/" + subfolder);
+            scanned.push_back (std::move (entry));
+        }
+    };
+    scan (root, true);
+    for (const auto& folder : getFolders())
+        scan (folder, false);
 
     auto needsReading = false;
     {
         const juce::ScopedLock scope (lock);
         for (auto& entry : scanned)
         {
-            entry.favourite = favourites.count (entry.key) > 0;
             if (const auto it = cache.find (cacheKey (entry.file, entry.key)); it != cache.end())
             {
                 entry.format = it->second.format;
@@ -199,20 +243,6 @@ std::vector<LibraryEntry> ReferenceLibrary::getEntries() const
 {
     const juce::ScopedLock scope (lock);
     return entries;
-}
-
-void ReferenceLibrary::toggleFavourite (const juce::String& key)
-{
-    {
-        const juce::ScopedLock scope (lock);
-        if (favourites.erase (key) == 0)
-            favourites.insert (key);
-        for (auto& entry : entries)
-            entry.favourite = favourites.count (entry.key) > 0;
-        std::sort (entries.begin(), entries.end(), libraryOrder);
-    }
-    saveFavourites();
-    sendChangeMessage();
 }
 
 void ReferenceLibrary::importFileAsync (const juce::File& source)
@@ -331,10 +361,11 @@ void ReferenceLibrary::loadState()
 {
     const juce::ScopedLock scope (lock);
 
-    const auto savedFavourites = juce::JSON::parse (favouritesFile);
-    if (const auto* list = savedFavourites.getArray())
-        for (const auto& key : *list)
-            favourites.insert (key.toString());
+    const auto savedFolders = juce::JSON::parse (foldersFile);
+    if (const auto* list = savedFolders.getArray())
+        for (const auto& path : *list)
+            if (const auto folder = path.toString(); juce::File::isAbsolutePath (folder))
+                folders.addIfNotAlreadyThere (juce::File (folder));
 
     const auto parsed = juce::JSON::parse (cacheFile);
     if (static_cast<int> (parsed["version"]) != cacheVersion)
@@ -367,16 +398,16 @@ void ReferenceLibrary::saveCache() const
     cacheFile.replaceWithText (juce::JSON::toString (juce::var (object)));
 }
 
-void ReferenceLibrary::saveFavourites() const
+void ReferenceLibrary::saveFolders() const
 {
     juce::Array<juce::var> list;
     {
         const juce::ScopedLock scope (lock);
-        for (const auto& key : favourites)
-            list.add (key);
+        for (const auto& folder : folders)
+            list.add (folder.getFullPathName());
     }
-    favouritesFile.getParentDirectory().createDirectory();
-    favouritesFile.replaceWithText (juce::JSON::toString (juce::var (list)));
+    foldersFile.getParentDirectory().createDirectory();
+    foldersFile.replaceWithText (juce::JSON::toString (juce::var (list)));
 }
 
 } // namespace lucky

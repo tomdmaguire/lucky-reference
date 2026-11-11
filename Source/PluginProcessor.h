@@ -76,10 +76,6 @@ public:
     /** Seconds of the mix heard so far for its profile (capped at the window). */
     double getMixProfileSeconds() const noexcept { return mixProfileSeconds; }
 
-    /** Fills each empty slot with the closest library track not already loaded, best match first, and returns how many
-        were filled. Loaded slots are never replaced. */
-    int suggestReferences();
-
     /** Empties a slot. */
     void clearSlot (int slot);
 

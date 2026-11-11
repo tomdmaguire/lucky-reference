@@ -28,7 +28,7 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 
 ### 1. Reference slots
 
-- Three slots. Drag a file onto a slot, click an empty slot to choose from the reference library, or browse for a file from the library panel or the slot's menu.
+- Three slots. Drag a file onto a slot, or click an empty slot to browse for one. The reference library is a separate tab (see Reference library); nothing on the REFS tab opens it, so the main screen works without it.
 - Formats: WAV, AIFF, FLAC, MP3, M4A/AAC (CoreAudio decoders on macOS).
 - Files are decoded on a background thread, resampled to the host rate, and held in memory as stereo. Mono files are duplicated to both channels; files with more than two channels use the first two.
 - Maximum length: 15 minutes.
@@ -36,7 +36,7 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - Browsing for a file starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
 - References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. Keeping references in the library gives them a stable home (see Reference library). A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
 - Closing the plugin window switches back to the mix, so a reference never keeps playing out of sight. Switching from the host with the window closed still works.
-- Slots can be cleared and replaced.
+- Slots can be cleared and replaced. Hovering a loaded slot shows a × to remove its reference; Delete or Backspace removes the selected one, and the slot's right-click menu has "Remove reference".
 
 ### 2. Source switch (A/B)
 
@@ -98,16 +98,15 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 
 ### 9. Reference library
 
-- One folder, `~/Music/Lucky Reference/References`, created if missing. Subfolders are included and shown as a quiet label next to each track, so you can organise by genre or project.
-- Shared by every instance. A rescan lists the folder (when the library opens, then every 5 s while it is open), and a low-priority thread reads each new or changed file's format and length once. The results are cached in `~/Library/Application Support/Lucky Reference/library-cache.json`, keyed by path, size and modification date.
-- **Library panel:** opens over the slot rows from the LIBRARY button in the top bar, by clicking an empty slot, or from a slot's menu. The stage stays live, so you can keep switching while you browse.
-  - Search box: every word must appear in the track name or its folder. Up and down move through the results without leaving the box, Return loads the highlighted track, and Escape clears the search, then closes the panel.
-  - Each row: heart, name, folder, a marker in the slot's colour if the track is already loaded, format badge and length.
-  - Favourites (hearts) sort first and are kept in `favourites.json` next to the cache, so clearing the cache never loses them.
-  - Double-click, Return or a file dropped on the panel loads into the selected slot, shown in the header as "INTO REF n". BROWSE... opens a file browser instead.
-  - When the library is empty, the panel says where to put tracks and offers SHOW IN FINDER.
-- **Add to library:** a reference loaded from outside the library shows a small ADD TO LIBRARY button on its slot (also in the slot's menu). It copies the file into the top of the library on a background thread and points the slot at the copy, keeping the audio and loop as they are. Nothing is ever copied without asking. A file with the same name and size already in the library is reused; a different file with the same name gets a number.
-- The three-dot menu has "Show library in Finder".
+- The main folder, `~/Music/Lucky Reference/References`, is created if missing. More folders can be added from the three-dot menu (**Library folders** › "Add a folder...", as in Lucky Seven); they are indexed where they are, never copied, and each can be shown in Finder or removed (its files stay put). The added folders are kept in `folders.json` next to the cache. Subfolders are included and shown as a quiet label next to each track (an added folder's tracks show its name).
+- Shared by every instance. A rescan lists the folders (when the library opens, then every 5 s while it is open, or from "Rescan all folders"), and a low-priority thread reads each new or changed file's format and length once. The results are cached in `~/Library/Application Support/Lucky Reference/library-cache.json`, keyed by path, size and modification date.
+- **LIBRARY tab:** REFS and LIBRARY tabs sit next to the three-dot menu, as Lucky Seven's MAP and LIST do, and the logo returns to REFS. The library covers the slot rows; the stage stays live, so you can keep switching while you browse. It doesn't depend on which slot is selected.
+  - Search box: every word must appear in the track name or its folder. Up and down move through the results without leaving the box, and Escape clears the search, then returns to REFS.
+  - Each row: name, folder, format badge, length, and **1 2 3** buttons in the slots' colours. Clicking one loads the track into that slot and stays in the library, so all three can be filled in a row; a filled button shows the slot already holds the track. With the list focused, the 1, 2 and 3 keys do the same.
+  - Double-click or Return loads into the first empty slot; when all three are full, the header says to use 1, 2 or 3.
+  - **ADD FILES...** (or dropping files on the library) copies audio files into the main folder in the background and stays in the library.
+  - When the library is empty, it says where to put tracks and offers ADD FILES... and SHOW IN FINDER.
+- **Add to library:** once you have opened the library, a reference loaded from outside it shows a small ADD TO LIBRARY button on its slot (also in the slot's menu). It copies the file into the main folder on a background thread and points the slot at the copy, keeping the audio and loop as they are. Nothing is ever copied without asking. A file with the same name and size already in the library is reused; a different file with the same name gets a number.
 
 ### 10. Closest to your mix
 
@@ -116,14 +115,14 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 - **Library side:** each track is analysed once by the library thread, reading the file in chunks (up to 15 minutes), and the profile is cached with the track's details. A 4-5 minute track takes 0.3-0.45 s.
 - **Mix side:** while the transport plays, the audio thread copies the mono mix into a preallocated lock-free FIFO next to the loudness meter (no allocation or locks). The processor's timer drains it twice a second into an analyser covering the last two minutes played, so the profile follows the mix as it changes. It isn't reset when playback restarts. It counts as ready after 20 seconds of gated playback.
 - **Distance:** the RMS difference across the bands combined with the punch difference, in dB. Different productions in one genre are typically 3-7 dB apart. The match bar shows `exp(-distance / 9 dB)`, as a bar with no percentage, so it reads as a ranking rather than a grade.
-- **CLOSEST** (next to A-Z in the library header) sorts by match, closest first, still filtered by the search. Until the mix is ready, a line under the header says how many seconds have been heard. The order is fixed when CLOSEST is chosen or the library opens, so rows don't move while you browse; tracks still being analysed go last and move up once analysed.
-- **SUGGEST** fills each empty slot with the closest matches not already loaded, best first, then closes the library. It never replaces a loaded slot, and it's disabled (with a tooltip saying why) until the mix is ready, while no slot is empty, or while no library track has a profile.
+- **CLOSEST** (next to A-Z in the library header) sorts by match, closest first, still filtered by the search. Until the mix is ready it shows no list, only "Play your mix for 20 seconds" with a progress bar; the ranked list appears once it is ready. The order is fixed when the list is ranked, so rows don't move while you browse; tracks still being analysed go last and move up once analysed.
+- There is no automatic fill: picking from the ranked list with the 1 2 3 buttons is quick and keeps the choice yours.
 
 ## UI
 
 ```
 ┌──────────────┬─────────────────────────────┬─────────┬───┐
-│ [Ab] LUCKY REFERENCE                         │ LIBRARY │ ⋯ │
+│ [Ab] LUCKY REFERENCE                │ REFS │ LIBRARY │ ⋯ │
 ├──────────────┴─────────────────────────────┴─────────┴───┤
 │ ┌ 1 ▁▃▅▇▆▅▃▂[▅▇█▇▆▅]▃▂▁▂▃▅▆▅▃▂▁   Artist – Track  16 s ┐ │
 │ ┌ 2 ▁▂▃▅▆▇▆▅▄▃▂▁▂▃[▅▆▇▇▆]▅▃▂▁     Artist – Track        ┐ │
@@ -136,12 +135,12 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the LIBRARY button and the three-dot menu (window size, placement hints, show library in Finder, remove all references).
+- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the REFS and LIBRARY tabs and the three-dot menu (window size, library folders, placement hints, remove all references). The logo returns to REFS.
 - Three outlined slot rows (100 px at 100% scale): waveform with coloured loop region and playhead, file name, a format badge, loop length.
 - The format badge makes a lossy reference obvious: "MP3 · 192 kbps" (bitrate from the file header) for MP3, AAC, Ogg and Opus, and lossy M4A; just "WAV", "AIFF", "FLAC" or lossless "M4A" (ALAC) otherwise. A lossy file has a softer top end, which is worth knowing before matching your mix to it.
 - The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout headline, the switch and LEVEL MATCH share one centre line.
 - LEVEL MATCH only affects the reference, so it always takes the selected reference's colour, as does the "Levels not matched" note.
-- **Keyboard:** ← plays the mix, → plays the reference, 1/2/3 choose the slot. The window takes keyboard focus when shown and when clicked; buttons never take it. The host's own key mapping of the `reference` parameter also works.
+- **Keyboard:** ← plays the mix, → plays the reference, 1/2/3 choose the slot, Delete removes the selected slot's reference. The shortcut hint hides while the library is shown. The window takes keyboard focus when shown and when clicked; buttons never take it. The host's own key mapping of the `reference` parameter also works.
 
 ### Visual delight
 
@@ -199,7 +198,7 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 - State saves and restores slots, loops, and the `reference`, `slot` and `match` parameters.
 - Toggling `reference` from the host with the editor closed switches the output.
 - Closing the editor switches back to the mix.
-- The library finds tracks in subfolders, reuses cached details and re-reads changed files, drops deleted files, keeps favourites first across restarts, matches searches on every word, and imports a file once (numbering a different file with the same name).
+- The library finds tracks in subfolders, reuses cached details and re-reads changed files, drops deleted files, indexes added folders in place and remembers them, matches searches on every word, and imports a file once (numbering a different file with the same name).
 - Adding a reference to the library keeps its audio and loop and saves the library copy's path with the session.
 - Tonal profiles ignore loudness, show a dull track as dull, ignore silence and quiet passages, show limiting as lower punch, forget audio outside the window, don't depend on block size, and rank a mix's matching reference first. Cached profiles match a fresh analysis.
-- The mix profile needs 20 s of playback and ignores a stopped transport; SUGGEST fills only empty slots, closest first.
+- The mix profile needs 20 s of playback and ignores a stopped transport; the library track closest to the mix that played ranks first.

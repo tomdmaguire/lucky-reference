@@ -213,32 +213,6 @@ std::optional<lucky::TonalProfile> LuckyReferenceProcessor::getMixProfile() cons
     return mixProfileSeconds >= mixProfileReadySeconds ? mixProfile : std::nullopt;
 }
 
-int LuckyReferenceProcessor::suggestReferences()
-{
-    const auto mix = getMixProfile();
-    if (! mix)
-        return 0;
-
-    auto candidates = library->getEntries();
-    candidates.erase (std::remove_if (candidates.begin(), candidates.end(), [this] (const lucky::LibraryEntry& entry)
-                                      {
-                                          if (! entry.profile)
-                                              return true;
-                                          for (int i = 0; i < numSlots; ++i)
-                                              if (getFile (i) == entry.file)
-                                                  return true;
-                                          return false;
-                                      }),
-                      candidates.end());
-    lucky::ReferenceLibrary::sortClosestFirst (candidates, *mix);
-
-    auto filled = 0;
-    for (int i = 0; i < numSlots && filled < static_cast<int> (candidates.size()); ++i)
-        if (getFile (i) == juce::File())
-            loadFile (i, candidates[static_cast<size_t> (filled++)].file);
-    return filled;
-}
-
 void LuckyReferenceProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     if (const auto xml = parameters.copyState().createXml())

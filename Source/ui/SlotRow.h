@@ -20,14 +20,12 @@ public:
     /** Called when the row is clicked, to make it the selected slot. */
     std::function<void()> onSelect;
 
-    /** Called to choose this slot's reference from the library (clicking an empty slot, or the menu). */
-    std::function<void()> onOpenLibrary;
-
     /** Marks the row as the selected slot and whether it's the one being heard. */
     void setState (bool isSelected, bool isAudible);
 
     void paint (juce::Graphics&) override;
     void mouseMove (const juce::MouseEvent&) override;
+    void mouseEnter (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
@@ -57,7 +55,8 @@ private:
     Drag edgeAt (float x) const;
     LoopRegion shownLoop() const;
     void showMenu();
-    /** True when the slot's file is loaded and lives outside the library, so it can be added. */
+    /** True when the slot's file is loaded and lives outside the library, and the library has been used, so the file
+        can be added to it. */
     bool canAddToLibrary() const;
     void addToLibrary();
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
@@ -69,8 +68,8 @@ private:
     double dragAnchorSeconds = 0.0;
     std::optional<LoopRegion> draft;
     std::unique_ptr<juce::FileChooser> chooser;
-    juce::Rectangle<float> addButtonArea;
-    bool addHover = false, adding = false;
+    juce::Rectangle<float> addButtonArea, removeButtonArea;
+    bool hovered = false, addHover = false, removeHover = false, adding = false;
     juce::File importing;
     juce::SharedResourcePointer<Settings> settings;
 };

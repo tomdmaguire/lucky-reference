@@ -101,7 +101,7 @@ void SlotRow::paint (juce::Graphics& g)
     const auto file = processor.getFile (slot);
     if (track == nullptr)
     {
-        juce::String message = "Drop a reference here, or click to choose from your library";
+        juce::String message = "Drop a reference here, or click to choose a file";
         if (processor.isLoading (slot))
             message = "Loading " + file.getFileName() + "...";
         else if (processor.getError (slot).isNotEmpty())
@@ -164,13 +164,28 @@ void SlotRow::paint (juce::Graphics& g)
     g.setColour (theme::text.withAlpha (audible ? 0.95f : 0.4f));
     g.fillRect (playheadX - 0.5f, area.getY() - 2.0f, 1.0f, area.getHeight() + 4.0f);
 
+    removeButtonArea = label.withLeft (label.getRight() - 18.0f).withSizeKeepingCentre (18.0f, 18.0f);
+    auto labelArea = label.withTrimmedRight (28.0f);
+    if (hovered)
+    {
+        if (removeHover)
+        {
+            g.setColour (theme::text.withAlpha (0.1f));
+            g.fillEllipse (removeButtonArea);
+        }
+        g.setColour (removeHover ? theme::text : theme::textDim);
+        const auto cross = removeButtonArea.withSizeKeepingCentre (7.0f, 7.0f);
+        g.drawLine ({ cross.getTopLeft(), cross.getBottomRight() }, 1.4f);
+        g.drawLine ({ cross.getBottomLeft(), cross.getTopRight() }, 1.4f);
+    }
+
     const auto lengthText = loop.isSet() ? juce::String (static_cast<double> (range.getLength()) / track->getSampleRate(), 1) + " s loop"
                                          : juce::String ("Drag to choose a loop");
     g.setColour (theme::textDim);
-    g.drawText (lengthText, label, juce::Justification::centredRight, true);
+    g.drawText (lengthText, labelArea, juce::Justification::centredRight, true);
 
     const auto nameFont = g.getCurrentFont();
-    auto nameArea = label.withTrimmedRight (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), lengthText) + 24.0f);
+    auto nameArea = labelArea.withTrimmedRight (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), lengthText) + 24.0f);
 
     addButtonArea = {};
     if (canAddToLibrary())
@@ -209,21 +224,30 @@ void SlotRow::paint (juce::Graphics& g)
 
 void SlotRow::mouseMove (const juce::MouseEvent& event)
 {
+    const auto loaded = processor.getTrack (slot) != nullptr;
     const auto overAdd = addButtonArea.contains (event.position);
-    if (overAdd != addHover)
+    const auto overRemove = loaded && removeButtonArea.expanded (3.0f).contains (event.position);
+    if (overAdd != addHover || overRemove != removeHover || ! hovered)
     {
         addHover = overAdd;
+        removeHover = overRemove;
+        hovered = true;
         repaint();
     }
-    const auto overEdge = ! overAdd && processor.getTrack (slot) != nullptr && edgeAt (event.position.x) != Drag::none;
+    const auto overEdge = ! overAdd && ! overRemove && loaded && edgeAt (event.position.x) != Drag::none;
     setMouseCursor (overEdge ? juce::MouseCursor::LeftRightResizeCursor : juce::MouseCursor::PointingHandCursor);
+}
+
+void SlotRow::mouseEnter (const juce::MouseEvent& event)
+{
+    mouseMove (event);
 }
 
 void SlotRow::mouseExit (const juce::MouseEvent&)
 {
-    if (addHover)
+    if (addHover || removeHover || hovered)
     {
-        addHover = false;
+        addHover = removeHover = hovered = false;
         repaint();
     }
 }
@@ -241,12 +265,15 @@ void SlotRow::mouseDown (const juce::MouseEvent& event)
 
     if (processor.getTrack (slot) == nullptr)
     {
-        if (processor.isLoading (slot))
-            return;
-        if (processor.getError (slot).isNotEmpty() || onOpenLibrary == nullptr)
+        if (! processor.isLoading (slot))
             browse();
-        else
-            onOpenLibrary();
+        return;
+    }
+
+    if (removeButtonArea.expanded (3.0f).contains (event.position))
+    {
+        drag = Drag::blocked;
+        processor.clearSlot (slot);
         return;
     }
 
@@ -327,7 +354,6 @@ void SlotRow::showMenu()
 {
     juce::PopupMenu menu;
     const auto hasFile = processor.getFile (slot) != juce::File();
-    menu.addItem ("Choose from library...", onOpenLibrary != nullptr, false, [this] { if (onOpenLibrary) onOpenLibrary(); });
     menu.addItem (hasFile ? "Replace with a file..." : "Choose a file...", [this] { browse(); });
     menu.addItem ("Add to library", canAddToLibrary() && ! adding, false, [this] { addToLibrary(); });
     menu.addItem ("Clear loop", processor.getLoop (slot).isSet(), false, [this] { processor.setLoop (slot, {}); });
@@ -339,7 +365,7 @@ void SlotRow::showMenu()
 bool SlotRow::canAddToLibrary() const
 {
     const auto file = processor.getFile (slot);
-    return processor.getTrack (slot) != nullptr && file.existsAsFile() && ! processor.getLibrary().contains (file);
+    return settings->hasOpenedLibrary() && processor.getTrack (slot) != nullptr && file.existsAsFile() && ! processor.getLibrary().contains (file);
 }
 
 void SlotRow::addToLibrary()

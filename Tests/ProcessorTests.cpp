@@ -227,31 +227,30 @@ public:
             expect (processor->getMixProfile().has_value());
         }
 
-        beginTest ("SUGGEST fills only the empty slots, closest match first");
+        beginTest ("The library ranks the track closest to the mix that played first");
         {
             auto processor = makeProcessor();
-            const auto root = processor->getLibrary().getRoot();
+            auto& library = processor->getLibrary();
+            const auto root = library.getRoot();
             lucky::test::writeWav (root.getChildFile ("Low.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 100.0), rate);
             lucky::test::writeWav (root.getChildFile ("Middle.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 1000.0), rate);
             lucky::test::writeWav (root.getChildFile ("High.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 5000.0), rate);
-            processor->getLibrary().rescan();
-            expect (pumpUntil ([&] { return ! processor->getLibrary().isReading(); }));
-            processor->loadFile (0, referenceFile);
+            library.rescan();
+            expect (pumpUntil ([&] { return ! library.isReading(); }));
 
             PlayingHead head;
             processor->setPlayHead (&head);
-            expectEquals (processor->suggestReferences(), 0, "nothing to suggest before the mix is known");
             for (int chunk = 0; chunk < 5; ++chunk)
             {
                 run (*processor, head, lucky::test::sine (-20.0f, 5.0, rate, 2, 1000.0));
                 processor->updateMixProfile();
             }
 
-            expectEquals (processor->suggestReferences(), 2);
-            expectEquals (processor->getFile (0).getFullPathName(), referenceFile.getFullPathName(), "a loaded slot is never replaced");
-            expectEquals (processor->getFile (1).getFileName(), juce::String ("Middle.wav"));
-            expect (processor->getFile (2).existsAsFile() && processor->getFile (2).getFileName() != "Middle.wav");
-            expectEquals (processor->suggestReferences(), 0, "no empty slots left");
+            const auto mixProfile = processor->getMixProfile();
+            expect (mixProfile.has_value());
+            auto entries = library.getEntries();
+            lucky::ReferenceLibrary::sortClosestFirst (entries, *mixProfile);
+            expectEquals (entries.front().name, juce::String ("Middle"));
         }
 
         beginTest ("A missing file keeps its path and reports the problem");

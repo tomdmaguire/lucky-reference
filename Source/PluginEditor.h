@@ -26,10 +26,10 @@ public:
     /** The editor's current scale, for ticking the Window size menu. */
     std::function<float()> getScale;
 
-    /** Shows the library over the slots, loading into the selected slot, optionally sorted closest first. */
+    /** Shows the LIBRARY tab over the slots, optionally sorted closest first. */
     void openLibrary (bool closest = false);
 
-    /** Hides the library and returns to the slots. */
+    /** Returns to the REFS tab. */
     void closeLibrary();
 
     void paint (juce::Graphics&) override;
@@ -42,6 +42,7 @@ private:
     void timerCallback() override;
     void syncControls();
     void showMenu();
+    void chooseLibraryFolder();
     void paintReadout (juce::Graphics&, juce::Rectangle<float> area);
     void paintShortcutHint (juce::Graphics&, juce::Rectangle<float> area);
     juce::Colour targetAccent() const;
@@ -58,7 +59,11 @@ private:
     };
 
     lucky::LibraryPanel libraryPanel;
-    juce::TextButton libraryButton { "LIBRARY" };
+    juce::TextButton refsTab { "REFS" }, libraryTab { "LIBRARY" };
+    /** An invisible button over the logo that returns to the REFS tab. */
+    juce::TextButton logoButton;
+    std::unique_ptr<juce::FileChooser> folderChooser;
+    juce::SharedResourcePointer<lucky::Settings> settings;
     lucky::RadarRipples radar;
     PaintLayer readout;
     lucky::SourceSwitch sourceSwitch;
@@ -87,7 +92,7 @@ public:
 
     void resized() override;
 
-    /** Opens the library panel, as the LIBRARY button does, optionally sorted closest first. */
+    /** Opens the LIBRARY tab, optionally sorted closest first. */
     void showLibrary (bool closest = false) { view.openLibrary (closest); }
 
 private:

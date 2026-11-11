@@ -29,6 +29,12 @@ public:
     /** Remembers where references come from, so browsing starts there next time. */
     void setLastReferenceFolder (const juce::File& folder) { properties.getUserSettings()->setValue ("lastReferenceFolder", folder.getFullPathName()); }
 
+    /** True once the library has been opened, after which slots offer to add outside files to it. */
+    bool hasOpenedLibrary() const { return properties.getUserSettings()->getBoolValue ("libraryOpened", false); }
+
+    /** Remembers that the library has been opened. */
+    void setOpenedLibrary() { properties.getUserSettings()->setValue ("libraryOpened", true); }
+
     /** Remembers the editor scale for new windows. */
     void setUiScale (float scale)
     {

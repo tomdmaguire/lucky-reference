@@ -137,18 +137,20 @@ void fillShapedLibrary (const juce::File& library)
     }
 }
 
-/** Fills the library with made-up tracks in a couple of folders, two of them favourites. */
+/** Fills the library with made-up tracks in a couple of folders, plus an added folder outside it. */
 void fillLibrary (const juce::File& library, const juce::File& state)
 {
+    const auto added = snapshotFolder ("Album Refs");
+    writeQuietFlac (added.getChildFile ("Glasshouse Choir.flac"), 244.0);
+    state.createDirectory();
+    state.getChildFile ("folders.json").replaceWithText (juce::JSON::toString (juce::Array<juce::var> { added.getFullPathName() }));
+
     const std::pair<const char*, double> tracks[] { { "Club/Low Tide (Extended)", 412.0 }, { "Club/Satellite Hearts", 236.0 },
                                                     { "Club/Copper Sun", 301.0 }, { "Indie/Paper Planes at Dawn", 198.0 },
                                                     { "Indie/Harbour Lights", 254.0 }, { "Concrete Garden", 221.0 },
                                                     { "Velvet Static", 263.0 } };
     for (const auto& [path, seconds] : tracks)
         writeQuietFlac (library.getChildFile (juce::String (path) + ".flac"), seconds);
-
-    state.createDirectory();
-    state.getChildFile ("favourites.json").replaceWithText (R"(["Glass Houses (Club Mix).wav", "Club/Satellite Hearts.flac"])");
 }
 
 void setParameter (LuckyReferenceProcessor& processor, const juce::String& id, float value)
@@ -181,7 +183,7 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
 
 /** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
     leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
-    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
+    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -189,6 +191,9 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
     processor->prepareToPlay (rate, blockSize);
     PlayingHead head;
     processor->setPlayHead (&head);
+
+    if (mode == "outside")
+        juce::SharedResourcePointer<lucky::Settings>()->setOpenedLibrary();
 
     if (mode != "empty" && mode != "library-empty")
     {
@@ -199,7 +204,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         writeWav (files[0], fakeSong ({ -20, -8, -4, -10, -2, -2, -14 }, 24.0, 1));
         writeWav (files[1], fakeSong ({ -14, -6, 0, 0, -16, -2, 1, 1, -20 }, 20.0, 2));
         writeWav (files[2], fakeSong ({ -10, -4, -4, -12, -3, -3, -6 }, 26.0, 3));
-        const auto slotsToLoad = mode == "closest" ? 1 : 3;
+        const auto slotsToLoad = mode.startsWith ("closest") ? 1 : 3;
         for (int i = 0; i < slotsToLoad; ++i)
             processor->loadFile (i, files[i]);
 
@@ -273,10 +278,9 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
             pumpMessages (0.35);
         }
     }
-    if (mode.startsWith ("library") || mode == "closest")
+    if (mode.startsWith ("library") || mode.startsWith ("closest"))
     {
-        setParameter (*processor, LuckyReferenceProcessor::slotId, 1.0f);
-        dynamic_cast<LuckyReferenceEditor&> (*editor).showLibrary (mode == "closest");
+        dynamic_cast<LuckyReferenceEditor&> (*editor).showLibrary (mode.startsWith ("closest"));
         for (int attempt = 0; attempt < 300 && processor->getLibrary().isReading(); ++attempt)
             pumpMessages (0.02);
         pumpMessages (0.3);
@@ -304,7 +308,7 @@ int main (int argc, char** argv)
 {
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|closest|outside> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|closest|closest-waiting|outside> [settleSeconds]\n";
         return 1;
     }
 
@@ -313,7 +317,7 @@ int main (int argc, char** argv)
     library.createDirectory();
     if (juce::String (argv[2]) == "library")
         fillLibrary (library, state);
-    if (juce::String (argv[2]) == "closest")
+    if (juce::String (argv[2]).startsWith ("closest"))
         fillShapedLibrary (library);
     setenv ("LUCKY_REFERENCE_LIBRARY", library.getFullPathName().toRawUTF8(), 1);
     setenv ("LUCKY_REFERENCE_STATE", state.getFullPathName().toRawUTF8(), 1);

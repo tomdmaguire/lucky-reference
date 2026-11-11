@@ -14,6 +14,11 @@ constexpr int tickMilliseconds = 500;
 constexpr int rescanTicks = 10;
 constexpr int hintHeight = 26;
 constexpr float matchBarWidth = 56.0f;
+/** Room for most format badges, so the match bars line up; longer badges such as "MP3 · 320 kbps" take more. */
+constexpr float formatColumnWidth = 96.0f;
+constexpr float slotButtonSize = 20.0f;
+constexpr float slotButtonGap = 6.0f;
+constexpr juce::uint32 noticeMilliseconds = 3500;
 
 juce::String formatDuration (double seconds)
 {
@@ -21,6 +26,11 @@ juce::String formatDuration (double seconds)
         return {};
     const auto total = juce::roundToInt (seconds);
     return juce::String (total / 60) + ":" + juce::String (total % 60).paddedLeft ('0', 2);
+}
+
+bool isAudioFile (const juce::File& file)
+{
+    return file.existsAsFile() && file.hasFileExtension (ReferenceLibrary::audioExtensions.removeCharacters ("*"));
 }
 } // namespace
 
@@ -36,7 +46,7 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     searchBox.setColour (juce::TextEditor::highlightColourId, theme::text.withAlpha (0.2f));
     searchBox.setColour (juce::CaretComponent::caretColourId, theme::text);
     searchBox.onTextChange = [this] { refresh(); };
-    searchBox.onReturnKey = [this] { chooseRow (list.getSelectedRow()); };
+    searchBox.onReturnKey = [this] { chooseRowIntoEmptySlot (list.getSelectedRow()); };
     searchBox.onEscapeKey = [this]
     {
         if (searchBox.isEmpty())
@@ -58,14 +68,14 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     clearSearchButton.onClick = [this] { searchBox.clear(); refresh(); searchBox.grabKeyboardFocus(); };
     addChildComponent (clearSearchButton);
 
-    for (auto* button : { &browseButton, &finderButton })
+    for (auto* button : { &addButton, &finderButton })
     {
         button->getProperties().set ("outline", true);
         button->setWantsKeyboardFocus (false);
     }
-    browseButton.setTooltip ("Choose a file from anywhere on your Mac");
-    browseButton.onClick = [this] { if (onBrowse) onBrowse(); };
-    addAndMakeVisible (browseButton);
+    addButton.setTooltip ("Copy audio files into your library");
+    addButton.onClick = [this] { browseForFiles(); };
+    addAndMakeVisible (addButton);
     finderButton.onClick = [this] { library.getRoot().revealToUser(); };
     addChildComponent (finderButton);
 
@@ -73,31 +83,21 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     {
         button->setWantsKeyboardFocus (false);
         button->setRadioGroupId (1);
+        button->setColour (juce::Slider::rotarySliderFillColourId, theme::mixColour);
         addAndMakeVisible (*button);
     }
-    nameOrderButton.setTooltip ("Favourites first, then by name");
+    nameOrderButton.setTooltip ("Sort by name");
     closestOrderButton.setTooltip ("Closest to your mix first, by tonal balance and punch");
     nameOrderButton.onClick = [this] { setClosest (false); };
     closestOrderButton.onClick = [this] { setClosest (true); };
     nameOrderButton.setToggleState (true, juce::dontSendNotification);
-
-    suggestButton.getProperties().set ("outline", true);
-    suggestButton.setWantsKeyboardFocus (false);
-    suggestButton.onClick = [this] { if (onSuggest) onSuggest(); };
-    addAndMakeVisible (suggestButton);
-
-    closeButton.setButtonText (juce::String::fromUTF8 ("\xc3\x97"));
-    closeButton.getProperties().set ("round", true);
-    closeButton.setTooltip ("Close the library (Esc)");
-    closeButton.setWantsKeyboardFocus (false);
-    closeButton.onClick = [this] { if (onClose) onClose(); };
-    addAndMakeVisible (closeButton);
 
     list.setRowHeight (rowHeight);
     list.setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
     list.setColour (juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
     list.getViewport()->setScrollBarThickness (8);
     list.addKeyListener (this);
+    list.addMouseListener (this, true);
     addAndMakeVisible (list);
 
     library.addChangeListener (this);
@@ -109,37 +109,18 @@ LibraryPanel::~LibraryPanel()
     library.removeChangeListener (this);
     searchBox.removeKeyListener (this);
     list.removeKeyListener (this);
+    list.removeMouseListener (this);
 }
 
-void LibraryPanel::setTarget (int slot)
-{
-    if (target != slot)
-    {
-        target = slot;
-        for (auto* button : { &nameOrderButton, &closestOrderButton })
-            button->setColour (juce::Slider::rotarySliderFillColourId, theme::slotColour (slot));
-        list.repaint();
-        repaint();
-    }
-}
-
-void LibraryPanel::opened (const juce::File& current)
+void LibraryPanel::opened()
 {
     library.rescan();
     rankedAgainst = sortClosest && mixProfile != nullptr ? mixProfile() : std::nullopt;
     refresh();
-    auto row = 0;
-    for (size_t i = 0; i < shown.size(); ++i)
-        if (shown[i].file == current)
-            row = static_cast<int> (i);
-    if (! shown.empty())
-    {
-        list.selectRow (row);
-        list.scrollToEnsureRowIsOnscreen (row);
-    }
+    if (! shown.empty() && list.getSelectedRow() < 0)
+        list.selectRow (0);
     searchBox.selectAll();
     searchBox.grabKeyboardFocus();
-    updateSuggestButton();
     ticks = 0;
     startTimer (tickMilliseconds);
 }
@@ -156,10 +137,17 @@ void LibraryPanel::timerCallback()
 
     if (sortClosest && ! rankedAgainst && mixProfile != nullptr)
         if ((rankedAgainst = mixProfile()))
+        {
             refresh();
+            list.scrollToEnsureRowIsOnscreen (0);
+            if (! shown.empty())
+                list.selectRow (0);
+        }
 
-    updateSuggestButton();
-    repaint (0, headerHeight, getWidth(), hintHeight + 4);
+    if (notice.isNotEmpty() && juce::Time::getMillisecondCounter() > noticeUntil && importing.isEmpty())
+        notice.clear();
+
+    repaint();
 }
 
 void LibraryPanel::setClosest (bool closest)
@@ -175,42 +163,75 @@ void LibraryPanel::setClosest (bool closest)
         list.selectRow (0);
 }
 
-void LibraryPanel::updateSuggestButton()
+bool LibraryPanel::waitingForMix() const
 {
-    const auto ready = mixProfile != nullptr && mixProfile().has_value();
-    const auto space = hasEmptySlot != nullptr && hasEmptySlot();
-    suggestButton.setEnabled (ready && space && profiledEntries > 0);
-    suggestButton.setTooltip (! ready ? "Play your mix for about " + juce::String (juce::roundToInt (mixSecondsNeeded)) + " seconds first"
-                              : ! space ? juce::String ("Clear a slot to get a suggestion")
-                              : profiledEntries == 0 ? juce::String ("Add tracks to your library first")
-                                                     : juce::String ("Fill the empty slots with the closest matches to your mix"));
+    return sortClosest && ! rankedAgainst && totalEntries > 0;
 }
 
 juce::String LibraryPanel::hintText() const
 {
-    if (! sortClosest || totalEntries == 0)
+    if (! sortClosest || ! rankedAgainst || totalEntries == 0)
         return {};
 
-    juce::String text;
-    if (! rankedAgainst)
-    {
-        const auto heard = mixSeconds != nullptr ? mixSeconds() : 0.0;
-        text = "Play your mix for about " + juce::String (juce::roundToInt (mixSecondsNeeded)) + " seconds to compare it with your library ("
-             + juce::String (std::min (juce::roundToInt (heard), juce::roundToInt (mixSecondsNeeded))) + " s so far)";
-    }
-    else
-    {
-        text = "Ranked by tonal balance and punch against the last two minutes of your mix";
-    }
-
+    juce::String text = "Ranked by tonal balance and punch against the last two minutes of your mix";
     if (analysedEntries < totalEntries)
         text += juce::String::fromUTF8 ("  \xc2\xb7  ") + "analysing " + juce::String (analysedEntries) + " of " + juce::String (totalEntries);
     return text;
 }
 
+void LibraryPanel::showNotice (const juce::String& text)
+{
+    notice = text;
+    noticeUntil = juce::Time::getMillisecondCounter() + noticeMilliseconds;
+    repaint();
+}
+
 void LibraryPanel::changeListenerCallback (juce::ChangeBroadcaster*)
 {
+    auto finished = 0, failed = 0;
+    for (int i = importing.size(); --i >= 0;)
+        if (const auto copy = library.takeImportResult (importing[i]))
+        {
+            ++finished;
+            if (! copy->existsAsFile())
+                ++failed;
+            importing.remove (i);
+        }
+
+    if (finished > 0)
+    {
+        if (importing.isEmpty())
+            showNotice (failed > 0 ? juce::String (failed) + (failed == 1 ? " file" : " files") + " couldn't be copied"
+                                   : juce::String ("Added to your library"));
+        library.rescan();
+        return;
+    }
     refresh();
+}
+
+void LibraryPanel::addFiles (const juce::Array<juce::File>& files)
+{
+    for (const auto& file : files)
+        if (isAudioFile (file) && ! library.contains (file) && ! importing.contains (file))
+        {
+            importing.add (file);
+            library.importFileAsync (file);
+        }
+
+    if (! importing.isEmpty())
+    {
+        notice = "Adding " + juce::String (importing.size()) + (importing.size() == 1 ? " file..." : " files...");
+        repaint();
+    }
+}
+
+void LibraryPanel::browseForFiles()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Add to your library", juce::File::getSpecialLocation (juce::File::userMusicDirectory),
+                                                   ReferenceLibrary::audioExtensions);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles
+                              | juce::FileBrowserComponent::canSelectMultipleItems,
+                          [this] (const juce::FileChooser& finished) { addFiles (finished.getResults()); });
 }
 
 void LibraryPanel::refresh()
@@ -221,7 +242,6 @@ void LibraryPanel::refresh()
     const auto entries = library.getEntries();
     totalEntries = static_cast<int> (entries.size());
     analysedEntries = static_cast<int> (std::count_if (entries.begin(), entries.end(), [] (const LibraryEntry& entry) { return entry.analysed; }));
-    profiledEntries = static_cast<int> (std::count_if (entries.begin(), entries.end(), [] (const LibraryEntry& entry) { return entry.profile.has_value(); }));
     const auto words = ReferenceLibrary::parseSearch (searchBox.getText());
     shown.clear();
     for (const auto& entry : entries)
@@ -240,28 +260,46 @@ void LibraryPanel::refresh()
     else
         list.selectRow (row, true, true);
 
-    clearSearchButton.setVisible (searchBox.getText().isNotEmpty());
-    showEmptyState();
+    updateVisibility();
     list.repaint();
     repaint();
 }
 
-void LibraryPanel::showEmptyState()
+void LibraryPanel::updateVisibility()
 {
     const auto empty = totalEntries == 0;
     searchBox.setVisible (! empty);
-    list.setVisible (! empty);
-    for (auto* button : { &nameOrderButton, &closestOrderButton, &suggestButton })
-        button->setVisible (! empty);
+    clearSearchButton.setVisible (! empty && searchBox.getText().isNotEmpty());
+    nameOrderButton.setVisible (! empty);
+    closestOrderButton.setVisible (! empty);
+    list.setVisible (! empty && ! waitingForMix());
     finderButton.setVisible (empty);
-    if (empty)
-        clearSearchButton.setVisible (false);
+    resized();
 }
 
-void LibraryPanel::chooseRow (int row)
+void LibraryPanel::chooseRow (int row, int slot)
 {
-    if (juce::isPositiveAndBelow (row, static_cast<int> (shown.size())) && onChoose)
-        onChoose (shown[static_cast<size_t> (row)].file);
+    if (juce::isPositiveAndBelow (row, static_cast<int> (shown.size())) && juce::isPositiveAndBelow (slot, numSlots) && onChoose)
+    {
+        const auto& entry = shown[static_cast<size_t> (row)];
+        onChoose (slot, entry.file);
+        showNotice ("Loaded into reference " + juce::String (slot + 1));
+        list.repaint();
+    }
+}
+
+void LibraryPanel::chooseRowIntoEmptySlot (int row)
+{
+    if (! juce::isPositiveAndBelow (row, static_cast<int> (shown.size())))
+        return;
+
+    for (int slot = 0; slot < numSlots; ++slot)
+        if (slotFile != nullptr && slotFile (slot) == juce::File())
+        {
+            chooseRow (row, slot);
+            return;
+        }
+    showNotice ("All three references are loaded. Click 1, 2 or 3 to replace one");
 }
 
 int LibraryPanel::getNumRows()
@@ -269,9 +307,18 @@ int LibraryPanel::getNumRows()
     return static_cast<int> (shown.size());
 }
 
-juce::Rectangle<int> LibraryPanel::heartArea (int, int height) const
+juce::Rectangle<float> LibraryPanel::slotButtonArea (int slot, int width, int height) const
 {
-    return { padding - 2, 0, 28, height };
+    const auto right = static_cast<float> (width - padding) - static_cast<float> (numSlots - 1 - slot) * (slotButtonSize + slotButtonGap);
+    return { right - slotButtonSize, (static_cast<float> (height) - slotButtonSize) * 0.5f, slotButtonSize, slotButtonSize };
+}
+
+int LibraryPanel::slotButtonAt (juce::Point<int> position, int width, int height) const
+{
+    for (int slot = 0; slot < numSlots; ++slot)
+        if (slotButtonArea (slot, width, height).expanded (slotButtonGap * 0.5f, 4.0f).contains (position.toFloat()))
+            return slot;
+    return -1;
 }
 
 void LibraryPanel::paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool rowIsSelected)
@@ -281,38 +328,42 @@ void LibraryPanel::paintListBoxItem (int row, juce::Graphics& g, int width, int 
 
     const auto& entry = shown[static_cast<size_t> (row)];
     auto area = juce::Rectangle<int> (0, 0, width, height).toFloat();
+    const auto lit = rowIsSelected || row == hoverRow;
     if (rowIsSelected)
     {
         g.setColour (theme::panelRaised);
         g.fillRoundedRectangle (area.reduced (4.0f, 1.0f), 4.0f);
-        g.setColour (theme::slotColour (target));
-        g.fillRoundedRectangle (area.reduced (4.0f, 8.0f).withWidth (2.0f), 1.0f);
     }
 
-    const auto heart = theme::heartPath (heartArea (width, height).toFloat().withSizeKeepingCentre (13.0f, 12.0f));
-    if (entry.favourite)
+    for (int slot = 0; slot < numSlots; ++slot)
     {
-        g.setColour (theme::accent);
-        g.fillPath (heart);
-    }
-    else
-    {
-        g.setColour (theme::textDim.withAlpha (rowIsSelected ? 0.8f : 0.45f));
-        g.strokePath (heart, juce::PathStrokeType (1.2f));
+        const auto button = slotButtonArea (slot, width, height);
+        const auto colour = theme::slotColour (slot);
+        const auto loaded = slotFile != nullptr && slotFile (slot) == entry.file;
+        const auto hot = row == hoverRow && slot == hoverSlot;
+        if (loaded || hot)
+        {
+            g.setColour (loaded ? colour : colour.withAlpha (0.2f));
+            g.fillRoundedRectangle (button, 4.0f);
+        }
+        g.setColour (loaded || hot ? colour : (lit ? colour.withAlpha (0.55f) : theme::outline.brighter (0.2f)));
+        g.drawRoundedRectangle (button.reduced (0.5f), 4.0f, 1.0f);
+        g.setColour (loaded ? theme::background : (hot ? theme::text : (lit ? colour : theme::textDim.withAlpha (0.6f))));
+        g.setFont (theme::labelFont (11.0f).withStyle ("Bold"));
+        g.drawText (juce::String (slot + 1), button, juce::Justification::centred);
     }
 
-    auto right = area.withTrimmedRight (static_cast<float> (padding + 4));
+    auto right = area.withRight (slotButtonArea (0, width, height).getX() - 16.0f);
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (12.0f));
     g.drawText (formatDuration (entry.seconds), right.removeFromRight (40.0f), juce::Justification::centredRight);
     right.removeFromRight (12.0f);
 
+    const auto badgeWidth = juce::GlyphArrangement::getStringWidth (juce::FontOptions (10.0f).withStyle ("Bold").withKerningFactor (0.08f), entry.format) + 12.0f;
+    auto badgeColumn = right.removeFromRight (std::max (formatColumnWidth, badgeWidth));
     if (entry.format.isNotEmpty())
-    {
-        const auto badgeWidth = juce::GlyphArrangement::getStringWidth (juce::FontOptions (10.0f).withStyle ("Bold").withKerningFactor (0.08f), entry.format) + 12.0f;
-        theme::paintFormatBadge (g, entry.format, right.removeFromRight (badgeWidth).withSizeKeepingCentre (badgeWidth, 16.0f));
-        right.removeFromRight (12.0f);
-    }
+        theme::paintFormatBadge (g, entry.format, badgeColumn.removeFromRight (badgeWidth).withSizeKeepingCentre (badgeWidth, 16.0f));
+    right.removeFromRight (12.0f);
 
     if (sortClosest && rankedAgainst)
     {
@@ -322,7 +373,7 @@ void LibraryPanel::paintListBoxItem (int row, juce::Graphics& g, int width, int 
         {
             g.setColour (theme::outline);
             g.fillRoundedRectangle (barArea, 2.0f);
-            g.setColour (theme::slotColour (target).withAlpha (0.85f));
+            g.setColour (theme::mixColour.withAlpha (0.85f));
             g.fillRoundedRectangle (barArea.withWidth (std::max (4.0f, matchBarWidth * TonalProfile::match (*entry.profile, *rankedAgainst))), 2.0f);
         }
         else
@@ -333,18 +384,7 @@ void LibraryPanel::paintListBoxItem (int row, juce::Graphics& g, int width, int 
         }
     }
 
-    if (const auto slot = slotOf != nullptr ? slotOf (entry.file) : -1; slot >= 0)
-    {
-        const auto dot = right.removeFromRight (18.0f).withSizeKeepingCentre (18.0f, 18.0f);
-        g.setColour (theme::slotColour (slot));
-        g.fillEllipse (dot);
-        g.setColour (theme::background);
-        g.setFont (theme::labelFont (11.0f).withStyle ("Bold"));
-        g.drawText (juce::String (slot + 1), dot, juce::Justification::centred);
-        right.removeFromRight (12.0f);
-    }
-
-    auto text = area.withLeft (static_cast<float> (heartArea (width, height).getRight() + 6)).withRight (right.getRight());
+    auto text = area.withLeft (static_cast<float> (padding + 4)).withRight (right.getRight());
     const auto nameFont = theme::labelFont (13.5f);
     g.setFont (nameFont);
     g.setColour (rowIsSelected ? theme::text : theme::text.withAlpha (0.85f));
@@ -361,19 +401,47 @@ void LibraryPanel::paintListBoxItem (int row, juce::Graphics& g, int width, int 
 
 void LibraryPanel::listBoxItemClicked (int row, const juce::MouseEvent& event)
 {
-    if (juce::isPositiveAndBelow (row, static_cast<int> (shown.size())) && heartArea (list.getWidth(), rowHeight).getHorizontalRange().contains (event.x))
-        library.toggleFavourite (shown[static_cast<size_t> (row)].key);
+    if (const auto slot = slotButtonAt (event.getPosition(), list.getVisibleRowWidth(), rowHeight); slot >= 0)
+        chooseRow (row, slot);
 }
 
 void LibraryPanel::listBoxItemDoubleClicked (int row, const juce::MouseEvent& event)
 {
-    if (! heartArea (list.getWidth(), rowHeight).getHorizontalRange().contains (event.x))
-        chooseRow (row);
+    if (slotButtonAt (event.getPosition(), list.getVisibleRowWidth(), rowHeight) < 0)
+        chooseRowIntoEmptySlot (row);
 }
 
 void LibraryPanel::returnKeyPressed (int lastRowSelected)
 {
-    chooseRow (lastRowSelected);
+    chooseRowIntoEmptySlot (lastRowSelected);
+}
+
+void LibraryPanel::mouseMove (const juce::MouseEvent& event)
+{
+    auto row = -1, slot = -1;
+    if (event.eventComponent != this && list.isVisible())
+    {
+        const auto inList = event.getEventRelativeTo (&list).getPosition();
+        row = list.getRowContainingPosition (inList.x, inList.y);
+        if (row >= 0)
+            slot = slotButtonAt (inList - list.getRowPosition (row, true).getPosition(), list.getVisibleRowWidth(), rowHeight);
+    }
+
+    if (row != hoverRow || slot != hoverSlot)
+    {
+        hoverRow = row;
+        hoverSlot = slot;
+        list.repaint();
+    }
+}
+
+void LibraryPanel::mouseExit (const juce::MouseEvent& event)
+{
+    if (! list.getScreenBounds().contains (event.getScreenPosition()) && (hoverRow >= 0 || hoverSlot >= 0))
+    {
+        hoverRow = hoverSlot = -1;
+        list.repaint();
+    }
 }
 
 bool LibraryPanel::keyPressed (const juce::KeyPress& key, juce::Component* originator)
@@ -385,8 +453,16 @@ bool LibraryPanel::keyPressed (const juce::KeyPress& key, juce::Component* origi
         list.selectRow (row);
         return true;
     }
-    if (originator == &list && key == juce::KeyPress::escapeKey)
-        return keyPressed (key);
+    if (originator == &list)
+    {
+        if (const auto character = key.getTextCharacter(); character >= '1' && character < '1' + numSlots && ! key.getModifiers().isAnyModifierKeyDown())
+        {
+            chooseRow (list.getSelectedRow(), static_cast<int> (character - '1'));
+            return true;
+        }
+        if (key == juce::KeyPress::escapeKey)
+            return keyPressed (key);
+    }
     return false;
 }
 
@@ -403,13 +479,18 @@ bool LibraryPanel::keyPressed (const juce::KeyPress& key)
 
 bool LibraryPanel::isInterestedInFileDrag (const juce::StringArray& files)
 {
-    return files.size() == 1 && juce::File (files[0]).hasFileExtension (ReferenceLibrary::audioExtensions.removeCharacters ("*"));
+    for (const auto& path : files)
+        if (isAudioFile (juce::File (path)))
+            return true;
+    return false;
 }
 
 void LibraryPanel::filesDropped (const juce::StringArray& files, int, int)
 {
-    if (onChoose)
-        onChoose (juce::File (files[0]));
+    juce::Array<juce::File> dropped;
+    for (const auto& path : files)
+        dropped.add (juce::File (path));
+    addFiles (dropped);
 }
 
 void LibraryPanel::paint (juce::Graphics& g)
@@ -420,23 +501,20 @@ void LibraryPanel::paint (juce::Graphics& g)
     g.setColour (theme::outline);
     g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
 
-    auto header = getLocalBounds().removeFromTop (headerHeight).reduced (padding, 0);
     if (totalEntries > 0)
     {
         g.setColour (theme::outline);
         g.fillRect (1, headerHeight, getWidth() - 2, 1);
     }
 
-    const auto into = juce::Rectangle<int>::leftTopRightBottom (closestOrderButton.getRight() + 12, header.getY(), suggestButton.getX() - 14, header.getBottom());
-    const auto slotText = "REF " + juce::String (target + 1);
-    const auto slotFont = theme::labelFont (12.0f).withStyle ("Bold");
-    const auto slotWidth = juce::roundToInt (juce::GlyphArrangement::getStringWidth (slotFont, slotText)) + 2;
-    g.setColour (theme::slotColour (target));
-    g.setFont (slotFont);
-    g.drawText (slotText, into.withLeft (into.getRight() - slotWidth), juce::Justification::centredRight);
-    g.setColour (theme::textDim);
-    g.setFont (theme::labelFont (11.0f));
-    g.drawText ("INTO", into.withTrimmedRight (slotWidth + 6), juce::Justification::centredRight);
+    if (notice.isNotEmpty())
+    {
+        const auto area = juce::Rectangle<int>::leftTopRightBottom (closestOrderButton.isVisible() ? closestOrderButton.getRight() + 16 : padding, 0,
+                                                                    addButton.getX() - 16, headerHeight);
+        g.setColour (theme::textDim);
+        g.setFont (theme::labelFont (11.5f));
+        g.drawFittedText (notice, area, juce::Justification::centredRight, 2);
+    }
 
     if (const auto hint = hintText(); hint.isNotEmpty())
     {
@@ -453,10 +531,27 @@ void LibraryPanel::paint (juce::Graphics& g)
         g.drawText ("Your library is empty", message.removeFromTop (28), juce::Justification::centred);
         g.setColour (theme::textDim);
         g.setFont (theme::labelFont (13.0f));
-        g.drawFittedText ("Put reference tracks in Music " + juce::String::fromUTF8 ("\xe2\x80\xba") + " Lucky Reference "
-                              + juce::String::fromUTF8 ("\xe2\x80\xba") + " References (folders are fine), or load a track "
-                              + "into a slot and choose ADD TO LIBRARY.",
+        const auto arrow = juce::String::fromUTF8 (" \xe2\x80\xba ");
+        g.drawFittedText ("Put reference tracks in Music" + arrow + "Lucky Reference" + arrow + "References, add a folder from the "
+                              + juce::String::fromUTF8 ("\xe2\x8b\xaf") + " menu, or add files here.",
                           message.removeFromTop (44), juce::Justification::centred, 2);
+    }
+    else if (waitingForMix())
+    {
+        const auto heard = juce::jlimit (0.0, mixSecondsNeeded, mixSeconds != nullptr ? mixSeconds() : 0.0);
+        auto message = getLocalBounds().withTrimmedTop (headerHeight).withSizeKeepingCentre (440, 110);
+        g.setColour (theme::text);
+        g.setFont (theme::labelFont (17.0f).withStyle ("Bold"));
+        g.drawText ("Play your mix for " + juce::String (juce::roundToInt (mixSecondsNeeded)) + " seconds", message.removeFromTop (28), juce::Justification::centred);
+        g.setColour (theme::textDim);
+        g.setFont (theme::labelFont (13.0f));
+        g.drawFittedText ("Then your library is ranked by how close each track's tonal balance and punch are to your mix.",
+                          message.removeFromTop (44), juce::Justification::centred, 2);
+        const auto bar = message.removeFromTop (20).toFloat().withSizeKeepingCentre (200.0f, 4.0f);
+        g.setColour (theme::outline);
+        g.fillRoundedRectangle (bar, 2.0f);
+        g.setColour (theme::mixColour);
+        g.fillRoundedRectangle (bar.withWidth (std::max (4.0f, bar.getWidth() * static_cast<float> (heard / mixSecondsNeeded))), 2.0f);
     }
     else if (shown.empty())
     {
@@ -480,11 +575,9 @@ void LibraryPanel::paintOverChildren (juce::Graphics& g)
 void LibraryPanel::resized()
 {
     auto header = getLocalBounds().removeFromTop (headerHeight).reduced (padding, (headerHeight - controlHeight) / 2);
-    closeButton.setBounds (header.removeFromRight (controlHeight));
-    header.removeFromRight (8);
-    browseButton.setBounds (header.removeFromRight (92));
-    header.removeFromRight (8);
-    suggestButton.setBounds (header.removeFromRight (92));
+    const auto empty = totalEntries == 0;
+    if (! empty)
+        addButton.setBounds (header.removeFromRight (104));
     searchBox.setBounds (header.removeFromLeft (300));
     clearSearchButton.setBounds (searchBox.getBounds().removeFromRight (controlHeight).reduced (3));
     header.removeFromLeft (10);
@@ -492,7 +585,12 @@ void LibraryPanel::resized()
     closestOrderButton.setBounds (header.removeFromLeft (82));
 
     list.setBounds (getLocalBounds().withTrimmedTop (headerHeight + 4 + (sortClosest ? hintHeight : 0)).reduced (4, 4));
-    finderButton.setBounds (getLocalBounds().withSizeKeepingCentre (150, controlHeight).translated (0, 52));
+    if (empty)
+    {
+        auto buttons = getLocalBounds().withSizeKeepingCentre (318, controlHeight).translated (0, 52);
+        addButton.setBounds (buttons.removeFromLeft (150));
+        finderButton.setBounds (buttons.removeFromRight (150));
+    }
 }
 
 } // namespace lucky
