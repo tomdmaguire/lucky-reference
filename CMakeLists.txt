@@ -105,3 +105,9 @@ target_link_libraries(LuckyReferenceTests
 
 enable_testing()
 add_test(NAME LuckyReferenceTests COMMAND $<TARGET_FILE:LuckyReferenceTests>)
+
+add_executable(LuckyReferenceProcessorTests Tests/ProcessorTests.cpp)
+target_include_directories(LuckyReferenceProcessorTests PRIVATE Source Tests $<TARGET_PROPERTY:LuckyReference,INCLUDE_DIRECTORIES>)
+target_compile_definitions(LuckyReferenceProcessorTests PRIVATE JUCE_UNIT_TESTS=1 $<TARGET_PROPERTY:LuckyReference,COMPILE_DEFINITIONS>)
+target_link_libraries(LuckyReferenceProcessorTests PRIVATE LuckyReference)
+add_test(NAME LuckyReferenceProcessorTests COMMAND $<TARGET_FILE:LuckyReferenceProcessorTests>)

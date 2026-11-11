@@ -34,8 +34,6 @@ struct LoopRegion
 
         return { start, end };
     }
-
-    bool operator== (const LoopRegion&) const = default;
 };
 
 } // namespace lucky
