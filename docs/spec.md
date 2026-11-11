@@ -52,7 +52,8 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 
 - Each slot shows the full waveform of its file, in the slot's colour.
 - Drag across the waveform to set the loop; drag either edge to adjust; double-click to clear it.
-- With no loop set, the whole track loops.
+- When a file is first loaded, the loop is set to its loudest 16 seconds (about 8 bars at 120 BPM), where the arrangement is usually densest and the comparison most useful. It can then be changed freely; restoring a session keeps the saved loop.
+- With no loop set (after clearing it), the whole track loops.
 - Minimum loop length: 2 seconds.
 - A 10 ms crossfade at the loop point avoids clicks.
 - The loop defines three things at once: what plays, what is loudness-measured, and what the readout compares.
@@ -139,6 +140,10 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 ## Out of scope for v1
 
 Tonal difference curve, timeline lock, mono or side solo, band solo and filters, blind test, stereo width and punch meters, beat-snapped loops, AU, standalone.
+
+## Later
+
+- Performance testing as done for Lucky Seven: CPU per instance, small buffer sizes, memory use with three long references.
 
 ## Open questions
 

@@ -135,6 +135,19 @@ public:
             expectWithinAbsoluteError (track.getLoudness ({}), LoudnessMeter::measure (quietThenLoud, 0, quietThenLoud.getNumSamples(), 48000.0), 0.05f);
         }
 
+        beginTest ("The loudest section is found for the first loop");
+        {
+            const auto song = test::concatenate (test::concatenate (test::sine (-30.0f, 20.0, 48000.0), test::sine (-12.0f, 16.0, 48000.0)),
+                                                 test::sine (-24.0f, 20.0, 48000.0));
+            const ReferenceTrack track ({}, song, 48000.0);
+            const auto loop = track.findLoudestSection (16.0);
+            expectWithinAbsoluteError (loop.startSeconds, 20.0, 0.11);
+            expectWithinAbsoluteError (loop.endSeconds, 36.0, 0.11);
+
+            const ReferenceTrack shortTrack ({}, test::sine (-12.0f, 10.0, 48000.0), 48000.0);
+            expect (! shortTrack.findLoudestSection (16.0).isSet());
+        }
+
         beginTest ("The overview follows the waveform");
         {
             const auto quietThenLoud = test::concatenate (test::sine (-40.0f, 1.0, 48000.0), test::sine (-6.0f, 1.0, 48000.0));

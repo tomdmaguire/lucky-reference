@@ -35,6 +35,9 @@ public:
     /** Gated integrated loudness in LUFS of the given loop, or -infinity when it is silent. */
     float getLoudness (const LoopRegion& loop) const;
 
+    /** The loudest stretch of the given length, as a loop; unset when the track is no longer than that. */
+    LoopRegion findLoudestSection (double seconds) const;
+
 private:
     juce::File file;
     juce::AudioBuffer<float> audio;

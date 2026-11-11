@@ -101,4 +101,30 @@ float ReferenceTrack::getLoudness (const LoopRegion& loop) const
     return LoudnessMeter::integratedFromSlices (slices.data() + first, std::max (0, last - first));
 }
 
+LoopRegion ReferenceTrack::findLoudestSection (double seconds) const
+{
+    const auto window = static_cast<size_t> (std::round (seconds * 10.0));
+    if (window == 0 || slices.size() <= window)
+        return {};
+
+    double sum = 0.0;
+    for (size_t i = 0; i < window; ++i)
+        sum += slices[i];
+
+    auto loudest = sum;
+    size_t loudestStart = 0;
+    for (size_t start = 1; start + window <= slices.size(); ++start)
+    {
+        sum += slices[start + window - 1] - slices[start - 1];
+        if (sum > loudest)
+        {
+            loudest = sum;
+            loudestStart = start;
+        }
+    }
+
+    const auto startSeconds = static_cast<double> (loudestStart) * 0.1;
+    return { startSeconds, startSeconds + seconds };
+}
+
 } // namespace lucky

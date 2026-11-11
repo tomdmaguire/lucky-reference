@@ -19,6 +19,7 @@ public:
     static inline const juce::Identifier pathProperty { "path" };
     static inline const juce::Identifier loopStartProperty { "loopStart" };
     static inline const juce::Identifier loopEndProperty { "loopEnd" };
+    static constexpr double autoLoopSeconds = 16.0;
 
     LuckyReferenceProcessor();
     ~LuckyReferenceProcessor() override;
@@ -47,7 +48,7 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    /** Loads a file into a slot (0-2), replacing what was there and clearing its loop. */
+    /** Loads a file into a slot (0-2), replacing what was there; once decoded, its loudest autoLoopSeconds become the loop. */
     void loadFile (int slot, const juce::File& file);
 
     /** Empties a slot. */
@@ -91,6 +92,7 @@ private:
     lucky::ReferenceEngine engine;
     std::array<lucky::ReferenceTrackPtr, numSlots> tracks;
     std::array<juce::String, numSlots> errors;
+    std::array<bool, numSlots> autoLoopPending {};
     std::atomic<float>* referenceParameter = nullptr;
     std::atomic<float>* slotParameter = nullptr;
     std::atomic<float>* matchParameter = nullptr;

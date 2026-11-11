@@ -33,15 +33,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout LuckyReferenceProcessor::cre
 
 void LuckyReferenceProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    const auto rateChanged = std::abs (sampleRate - preparedRate) > 0.5;
+    const auto rateChanged = std::abs (sampleRate - loadingRate()) > 0.5;
     preparedRate = sampleRate;
     engine.prepare (sampleRate, samplesPerBlock);
 
     if (rateChanged)
         requestAll();
-    else
-        for (int i = 0; i < numSlots; ++i)
-            engine.setSlot (i, tracks[static_cast<size_t> (i)], getLoop (i));
 }
 
 void LuckyReferenceProcessor::releaseResources() {}
@@ -124,6 +121,7 @@ void LuckyReferenceProcessor::loadFile (int index, const juce::File& file)
     state.setProperty (loopEndProperty, 0.0, nullptr);
     tracks[static_cast<size_t> (index)] = nullptr;
     errors[static_cast<size_t> (index)] = {};
+    autoLoopPending[static_cast<size_t> (index)] = file != juce::File();
     engine.setSlot (index, nullptr, {});
     loader.request (index, file, loadingRate());
     sendChangeMessage();
@@ -155,8 +153,18 @@ void LuckyReferenceProcessor::changeListenerCallback (juce::ChangeBroadcaster*)
     for (int i = 0; i < numSlots; ++i)
         if (auto result = loader.takeResult (i))
         {
-            tracks[static_cast<size_t> (i)] = result->track;
-            errors[static_cast<size_t> (i)] = result->error;
+            const auto index = static_cast<size_t> (i);
+            tracks[index] = result->track;
+            errors[index] = result->error;
+
+            if (result->track != nullptr && std::exchange (autoLoopPending[index], false))
+            {
+                const auto loop = result->track->findLoudestSection (autoLoopSeconds);
+                auto state = slotState (i);
+                state.setProperty (loopStartProperty, loop.startSeconds, nullptr);
+                state.setProperty (loopEndProperty, loop.endSeconds, nullptr);
+            }
+
             engine.setSlot (i, result->track, getLoop (i));
         }
     sendChangeMessage();
@@ -184,6 +192,7 @@ void LuckyReferenceProcessor::setStateInformation (const void* data, int sizeInB
         track = nullptr;
     for (auto& error : errors)
         error = {};
+    autoLoopPending = {};
     for (int i = 0; i < numSlots; ++i)
         engine.setSlot (i, nullptr, {});
     requestAll();

@@ -119,6 +119,20 @@ public:
             expect (identical (run (*processor, head, mix), mix));
         }
 
+        beginTest ("A newly loaded reference loops its loudest section");
+        {
+            const auto songFile = folder.getChildFile ("song.wav");
+            lucky::test::writeWav (songFile,
+                                   lucky::test::concatenate (lucky::test::sine (-30.0f, 30.0, rate), lucky::test::sine (-12.0f, 20.0, rate)), rate);
+            auto processor = makeProcessor();
+            processor->loadFile (0, songFile);
+            expect (pumpUntil ([&] { return processor->getTrack (0) != nullptr; }));
+            const auto loop = processor->getLoop (0);
+            expect (loop.isSet());
+            expect (loop.startSeconds >= 29.9 && loop.endSeconds <= 50.0, juce::String (loop.startSeconds) + " to " + juce::String (loop.endSeconds));
+            expectWithinAbsoluteError (loop.endSeconds - loop.startSeconds, LuckyReferenceProcessor::autoLoopSeconds, 1.0e-9);
+        }
+
         beginTest ("Sessions restore files, loops and parameters");
         {
             auto original = makeProcessor();
