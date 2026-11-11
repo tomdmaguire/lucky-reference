@@ -107,6 +107,23 @@ public:
             expect (output.getMagnitude (0, output.getNumSamples() - blockSize * 4, blockSize) > 0.05f);
         }
 
+        beginTest ("Closing the window switches back to the mix");
+        {
+            auto processor = makeProcessor();
+            auto& parameters = processor->getParameters();
+            const auto referenceOn = [&] { return parameters.getRawParameterValue (LuckyReferenceProcessor::referenceId)->load() > 0.5f; };
+
+            std::unique_ptr<juce::AudioProcessorEditor> editor (processor->createEditorAndMakeActive());
+            setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
+            processor->editorBeingDeleted (editor.get());
+            editor.reset();
+            expect (! referenceOn());
+            expect (processor->getActiveEditor() == nullptr);
+
+            setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
+            expect (referenceOn(), "the switch still works from the host with the window closed");
+        }
+
         beginTest ("Exports always contain the mix");
         {
             auto processor = makeProcessor();

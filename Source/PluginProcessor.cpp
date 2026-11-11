@@ -127,6 +127,12 @@ void LuckyReferenceProcessor::loadFile (int index, const juce::File& file)
     sendChangeMessage();
 }
 
+void LuckyReferenceProcessor::switchToMix()
+{
+    if (referenceParameter->load() > 0.5f)
+        parameters.getParameter (referenceId)->setValueNotifyingHost (0.0f);
+}
+
 void LuckyReferenceProcessor::clearSlot (int index)
 {
     loadFile (index, {});

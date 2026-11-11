@@ -74,6 +74,7 @@ class LuckyReferenceEditor final : public juce::AudioProcessorEditor
 {
 public:
     explicit LuckyReferenceEditor (LuckyReferenceProcessor&);
+    ~LuckyReferenceEditor() override;
 
     void resized() override;
 

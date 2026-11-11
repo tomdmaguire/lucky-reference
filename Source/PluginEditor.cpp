@@ -407,6 +407,11 @@ LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorTo
     sizeRestored = true;
 }
 
+LuckyReferenceEditor::~LuckyReferenceEditor()
+{
+    static_cast<LuckyReferenceProcessor&> (processor).switchToMix();
+}
+
 float LuckyReferenceEditor::currentScale() const
 {
     return static_cast<float> (getWidth()) / static_cast<float> (LuckyReferenceView::baseWidth);
