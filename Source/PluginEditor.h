@@ -27,6 +27,8 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    bool keyPressed (const juce::KeyPress&) override;
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
@@ -48,6 +50,7 @@ private:
     bool referenceOn = false;
     int selectedSlot = 0;
     bool controlsSynced = false;
+    bool focusTaken = false;
     bool sourceSwitchShowsReference = false;
     int shownSlot = 0;
     juce::Colour accent;

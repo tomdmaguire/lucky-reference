@@ -59,12 +59,20 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
     {
         rows[static_cast<size_t> (i)] = std::make_unique<lucky::SlotRow> (owner, i);
-        rows[static_cast<size_t> (i)]->onSelect = [this, i] { slotAttachment.setValueAsCompleteGesture (static_cast<float> (i)); };
+        rows[static_cast<size_t> (i)]->onSelect = [this, i]
+        {
+            grabKeyboardFocus();
+            slotAttachment.setValueAsCompleteGesture (static_cast<float> (i));
+        };
         addAndMakeVisible (*rows[static_cast<size_t> (i)]);
     }
 
     addAndMakeVisible (rings);
-    sourceSwitch.onToggle = [this] (bool on) { referenceAttachment.setValueAsCompleteGesture (on ? 1.0f : 0.0f); };
+    sourceSwitch.onToggle = [this] (bool on)
+    {
+        grabKeyboardFocus();
+        referenceAttachment.setValueAsCompleteGesture (on ? 1.0f : 0.0f);
+    };
     addAndMakeVisible (sourceSwitch);
 
     matchButton.setClickingTogglesState (true);
@@ -89,8 +97,31 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     accent = targetAccent();
     matchButton.setColour (juce::Slider::rotarySliderFillColourId, accent);
 
+    setWantsKeyboardFocus (true);
     owner.addChangeListener (this);
     startTimerHz (30);
+}
+
+void LuckyReferenceView::mouseDown (const juce::MouseEvent&)
+{
+    grabKeyboardFocus();
+}
+
+bool LuckyReferenceView::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::leftKey || key == juce::KeyPress::rightKey)
+    {
+        referenceAttachment.setValueAsCompleteGesture (key == juce::KeyPress::rightKey ? 1.0f : 0.0f);
+        return true;
+    }
+
+    const auto character = key.getTextCharacter();
+    if (character >= '1' && character < '1' + LuckyReferenceProcessor::numSlots)
+    {
+        slotAttachment.setValueAsCompleteGesture (static_cast<float> (character - '1'));
+        return true;
+    }
+    return false;
 }
 
 LuckyReferenceView::~LuckyReferenceView()
@@ -138,6 +169,12 @@ void LuckyReferenceView::changeListenerCallback (juce::ChangeBroadcaster*)
 
 void LuckyReferenceView::timerCallback()
 {
+    if (! focusTaken && isShowing())
+    {
+        focusTaken = true;
+        grabKeyboardFocus();
+    }
+
     sourceSwitch.tick();
 
     const auto target = targetAccent();
@@ -196,6 +233,11 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.fillRect (stage.getX(), stage.getY(), stage.getWidth(), 1);
 
     paintReadout (g, stage.reduced (gutter, 0).removeFromLeft (sideColumnWidth).toFloat());
+
+    g.setColour (theme::textDim.withAlpha (0.8f));
+    g.setFont (theme::labelFont (10.0f));
+    g.drawText (juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x90 \xe2\x86\x92  TO SWITCH   1 2 3  SLOTS")),
+                stage.withTop (stage.getBottom() - 30).withTrimmedBottom (10), juce::Justification::centred);
 }
 
 void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float> area)
