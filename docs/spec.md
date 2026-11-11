@@ -112,7 +112,7 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 ```
 
 - Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators and the three-dot menu (window size, placement hints, remove all references).
-- Three outlined slot rows: waveform with coloured loop region and playhead, file name, a format badge, loop length.
+- Three outlined slot rows (100 px at 100% scale): waveform with coloured loop region and playhead, file name, a format badge, loop length.
 - The format badge makes a lossy reference obvious: "MP3 · 192 kbps" (bitrate from the file header) for MP3, AAC, Ogg and Opus, and lossy M4A; just "WAV", "AIFF", "FLAC" or lossless "M4A" (ALAC) otherwise. A lossy file has a softer top end, which is worth knowing before matching your mix to it.
 - The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout headline, the switch and LEVEL MATCH share one centre line.
 - LEVEL MATCH only affects the reference, so it always takes the selected reference's colour, as does the "Levels not matched" note.

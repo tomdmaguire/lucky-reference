@@ -33,7 +33,7 @@ void RadarRipples::ripple (juce::Point<float> from, juce::Colour rippleColour)
 
 void RadarRipples::timerCallback()
 {
-    if (! isShowing() || getLocalBounds().isEmpty())
+    if (! isVisible() || getLocalBounds().isEmpty())
     {
         listening = false;
         return;
