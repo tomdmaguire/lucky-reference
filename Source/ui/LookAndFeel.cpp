@@ -62,6 +62,13 @@ void LuckyLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& bu
             g.setColour (isMouseOver ? colour.brighter (0.15f) : colour);
             g.fillRoundedRectangle (bounds, 4.0f);
         }
+        else if (button.getProperties()["toggle"] && button.getToggleState())
+        {
+            g.setColour (colour.withAlpha (isMouseOver ? 0.2f : 0.14f));
+            g.fillRoundedRectangle (bounds, 4.0f);
+            g.setColour (colour.withAlpha (0.8f));
+            g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+        }
         else
         {
             g.setColour (isMouseOver ? theme::text.withAlpha (0.06f) : juce::Colours::transparentBlack);
@@ -109,8 +116,25 @@ void LuckyLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& butt
     }
 
     g.setFont (getTextButtonFont (button, button.getHeight()));
-    g.setColour (button.getProperties()["primary"] ? theme::background : theme::text);
-    g.drawText (button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+    const auto& properties = button.getProperties();
+    auto area = button.getLocalBounds();
+
+    if (properties["toggle"])
+    {
+        const auto on = button.getToggleState();
+        const auto colour = button.findColour (juce::Slider::rotarySliderFillColourId);
+        const auto textWidth = juce::GlyphArrangement::getStringWidthInt (g.getCurrentFont(), button.getButtonText());
+        auto content = area.withSizeKeepingCentre (textWidth + 14, area.getHeight());
+        const auto dot = content.removeFromLeft (8).toFloat().withSizeKeepingCentre (6.0f, 6.0f);
+        g.setColour (on ? colour : theme::textDim.withAlpha (0.5f));
+        g.fillEllipse (dot);
+        g.setColour (on ? theme::text : theme::textDim);
+        g.drawText (button.getButtonText(), content.withTrimmedLeft (6), juce::Justification::centredLeft);
+        return;
+    }
+
+    g.setColour (properties["primary"] ? theme::background : theme::text);
+    g.drawText (button.getButtonText(), area, juce::Justification::centred);
 }
 
 } // namespace lucky

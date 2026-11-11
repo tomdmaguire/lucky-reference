@@ -53,6 +53,8 @@ target_sources(LuckyReference PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/ui/LookAndFeel.cpp
+    Source/ui/SlotRow.cpp
+    Source/ui/SourceSwitch.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}
 )
 
@@ -111,3 +113,8 @@ target_include_directories(LuckyReferenceProcessorTests PRIVATE Source Tests $<T
 target_compile_definitions(LuckyReferenceProcessorTests PRIVATE JUCE_UNIT_TESTS=1 $<TARGET_PROPERTY:LuckyReference,COMPILE_DEFINITIONS>)
 target_link_libraries(LuckyReferenceProcessorTests PRIVATE LuckyReference)
 add_test(NAME LuckyReferenceProcessorTests COMMAND $<TARGET_FILE:LuckyReferenceProcessorTests>)
+
+add_executable(LuckyReferenceSnapshot tools/Snapshot.cpp)
+target_include_directories(LuckyReferenceSnapshot PRIVATE Source $<TARGET_PROPERTY:LuckyReference,INCLUDE_DIRECTORIES>)
+target_compile_definitions(LuckyReferenceSnapshot PRIVATE $<TARGET_PROPERTY:LuckyReference,COMPILE_DEFINITIONS>)
+target_link_libraries(LuckyReferenceSnapshot PRIVATE LuckyReference)
