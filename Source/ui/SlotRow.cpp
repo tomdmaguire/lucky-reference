@@ -29,7 +29,7 @@ void SlotRow::setState (bool isSelected, bool isAudible)
 
 juce::Rectangle<float> SlotRow::waveformArea() const
 {
-    return getLocalBounds().toFloat().withTrimmedLeft (badgeWidth).reduced (10.0f, 8.0f).withTrimmedTop (16.0f);
+    return getLocalBounds().toFloat().withTrimmedLeft (badgeWidth).reduced (10.0f, 8.0f).withTrimmedTop (20.0f);
 }
 
 double SlotRow::secondsAt (float x) const
@@ -89,8 +89,8 @@ void SlotRow::paint (juce::Graphics& g)
     g.drawText (juce::String (slot + 1), badge, juce::Justification::centred);
 
     const auto area = waveformArea();
-    const auto label = area.withY (bounds.getY() + 6.0f).withHeight (14.0f);
-    g.setFont (theme::labelFont (11.0f));
+    const auto label = area.withY (bounds.getY() + 6.0f).withHeight (17.0f);
+    g.setFont (theme::labelFont (12.5f));
 
     const auto file = processor.getFile (slot);
     if (track == nullptr)
@@ -102,13 +102,14 @@ void SlotRow::paint (juce::Graphics& g)
             message = processor.getError (slot) + ": " + file.getFileName() + ". Click to find it";
 
         g.setColour (theme::textDim);
-        g.drawText (message, area.withTrimmedTop (-16.0f), juce::Justification::centred);
+        g.setFont (theme::labelFont (14.0f));
+        g.drawText (message, area.withTrimmedTop (-20.0f), juce::Justification::centred);
         if (! processor.isLoading (slot))
         {
             g.setColour (theme::outline);
             const float dashes[] { 4.0f, 4.0f };
             juce::Path outline;
-            outline.addRoundedRectangle (area.withTrimmedTop (-10.0f), 4.0f);
+            outline.addRoundedRectangle (area.withTrimmedTop (-14.0f), 4.0f);
             juce::Path dashed;
             juce::PathStrokeType (1.0f).createDashedStroke (dashed, outline, dashes, 2);
             g.fillPath (dashed);

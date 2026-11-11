@@ -9,7 +9,7 @@ namespace lucky
 
 /** Two halos around the A/B switch, one for the mix and one for the reference, that jump with each signal's fast
     K-weighted level like a meter, scaled around the mix's current loudness so matched signals move about the same size.
-    Switching sends a ripple out in the new source's colour. */
+    Every hit in either signal sends a ripple out from its halo in its colour, and switching sends one from the switch. */
 class LoudnessRings final : public juce::Component,
                             private juce::Timer
 {
@@ -41,10 +41,24 @@ private:
     struct Ripple
     {
         juce::Colour colour;
+        float startSpread = 0.0f;
+        float strength = 1.0f;
         float age = 0.0f;
     };
 
+    /** Spots hits in one signal: a fast level well above its recent average. */
+    struct HitDetector
+    {
+        float average = 0.0f;
+        bool primed = false;
+        int framesSinceHit = 1000;
+
+        /** Feeds this frame's level and returns how far above the average it jumped (0 when it's not a hit). */
+        float update (float lufs) noexcept;
+    };
+
     void timerCallback() override;
+    void addRipple (juce::Colour colour, float startSpread, float strength);
     float spreadFor (float lufs, float centreLufs) const noexcept;
     juce::Path halo (float spread) const;
 
@@ -55,6 +69,7 @@ private:
     juce::Colour referenceColour;
     bool referenceAudible = false;
     std::vector<Ripple> ripples;
+    HitDetector mixHits, referenceHits;
 };
 
 } // namespace lucky
