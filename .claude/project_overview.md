@@ -11,6 +11,7 @@ JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 reference plugin for the m
 - `Source/ref/`: `ReferenceTrack` (decoded stereo at host rate, overview peaks, loudness slices, momentary loudness at a position, loudest-section search), `Resampler` (macOS AudioConverter), `ReferenceLoader` (background decode, newest request per slot wins), `LoopRegion`.
 - `Source/ui/`: `SlotRow`, `SourceSwitch` (spring knob), `LoudnessRings`, `SegmentGlyph`, `Settings`, `Theme` (slot 1 gold, 2 pink, 3 green), `LookAndFeel` (from Lucky Seven; adds a `toggle` outline button style).
 - `Tests/`: `LuckyReferenceTests` (DSP and loading, category "Lucky Reference") and `LuckyReferenceProcessorTests` (links the plugin; parameters, export safety, state, auto loop).
+- `tools/Benchmark.cpp`: engine CPU per block at 32-512 samples. `packaging/` + `.github/workflows/`: Lucky Seven's release pipeline adapted for VST3 only (tag `v*` -> pkg + zip).
 - `tools/Snapshot.cpp`: renders the editor to PNG with generated references (`empty|loaded|reference|measuring|nomatch`). `tools/LoadBenchmark.cpp`: times loading a file (or `--synthetic` 4-minute song).
 
 ## Notes

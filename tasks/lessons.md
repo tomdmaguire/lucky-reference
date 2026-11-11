@@ -7,6 +7,7 @@ Carried over from Lucky Seven where they apply.
 
 ## Don't disturb a live DAW session
 - **Rule:** while the DAW is in use for testing, build with `nice -n 19` and limited `-j`, build only test/tool targets, and install (full build) only after the host has quit.
+- **Check first:** run `pgrep -lf "Ableton Live"` before any full build; the plugin build installs itself, so a full build while the host has the plugin loaded swaps the binary under it.
 
 ## Match a sibling product's UI conventions before building
 - **Mistake:** Lucky Reference's first UI copied Lucky Seven's colours but not its structure (outlined panels, top bar separators, three-dot icon, Window size menu, scaling), so it felt like a different product.

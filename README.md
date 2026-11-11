@@ -14,6 +14,7 @@ A sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven). Work in 
 - **Window size** from 75% to 200%: drag the corner or pick a size from the **⋯** menu.
 - **Follows your transport**: references play when your DAW plays, and every reference restarts at its loop start when you press play.
 - **Safe exports**: offline renders always contain your mix.
+- **Light**: about 0.1% of the per-block time on average at 48 kHz, with the worst block under 6% at a 64-sample buffer. A 4-minute reference loads in about 0.3 s and holds about 90 MB.
 
 References are linked by path, not copied into your project, so keep them where they are (or relocate them from the slot if you move them).
 
@@ -29,7 +30,23 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-`build/LuckyReferenceSnapshot <file.png> <empty|loaded|reference|measuring|nomatch>` renders the editor with generated references.
+### Tools
+
+- `build/LuckyReferenceSnapshot <file.png> <empty|loaded|reference|measuring|nomatch>` renders the editor with generated references.
+- `build/LuckyReferenceBench_artefacts/Release/LuckyReferenceBench` measures the engine's CPU use at 32-512 sample buffers, on the mix, on a reference and while flipping between them. Run it with nothing else busy (a DAW open skews the numbers).
+- `build/LuckyReferenceLoadBenchmark_artefacts/Release/LuckyReferenceLoadBenchmark <file | --synthetic> [host rate]` times decoding, resampling and analysis.
+
+### Release checks
+
+Before tagging a release, on the installed build:
+
+```sh
+/Applications/pluginval.app/Contents/MacOS/pluginval --strictness-level 10 --validate-in-process --validate ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"
+lipo -info ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"/Contents/MacOS/"Lucky Reference"   # x86_64 arm64
+leaks --atExit -- build/LuckyReferenceProcessorTests
+```
+
+Then add the version's entry to `CHANGELOG.md` and push a tag such as `v0.1.0`: GitHub Actions builds, tests, ad-hoc signs and publishes `Lucky-Reference.pkg` and a zip.
 
 JUCE is fetched automatically by CMake. The build copies the VST3 into `~/Library/Audio/Plug-Ins/VST3`.
 

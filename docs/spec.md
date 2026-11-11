@@ -145,9 +145,15 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 
 ## Later
 
-- Performance testing as done for Lucky Seven: CPU per instance, small buffer sizes, memory use with three long references (`tools/LoadBenchmark.cpp` already times loading).
 - A shared Lucky UI library for both plugins: theme, look and feel, seven-segment glyphs, menu icon and the scaling editor are currently copied from Lucky Seven.
 - A personal reference library: copy loaded references into a folder such as `~/Music/Lucky Reference/References` (as emit does) and offer the ones you like for quick loading. This would also let references travel with a project.
+
+## Performance (measured)
+
+- Engine, 48 kHz, three 4-minute references: average 0.05-0.09% of each block's time budget; p99.9 under 3%; worst block under 6% at 64 samples and under 15% at 32 samples (`tools/Benchmark.cpp`).
+- Whole plugin through a VST3 host with no references playing: 0.02% of a core at 64 samples.
+- Loading a 4-minute 44.1 kHz file at 48 kHz: 0.3 s. Memory: about 92 MB per 4-minute reference; loading briefly needs about twice one track.
+- pluginval strictness 10: all 25 test groups pass. No leaks in the processor tests.
 
 ## Decisions
 
