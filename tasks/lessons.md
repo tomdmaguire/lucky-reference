@@ -35,3 +35,7 @@ Carried over from Lucky Seven where they apply.
 ## Never keep a pointer into a temporary
 - **Mistake:** `if (const auto* list = JSON::parse (file).getArray())` and `const auto* entry = findEntry (library.getEntries(), key)` both pointed into a value destroyed at the end of the statement, so favourites silently failed to load and a test read garbage.
 - **Rule:** when a call returns by value (`var`, `std::vector`, a `unique_ptr` from a factory), store it in a named local before taking a pointer or reference into it or into anything it owns. `makeProcessor()->getLibrary()` crashed the same way: the temporary processor was the shared library's last owner.
+
+## Keep a browser independent of hidden state
+- **Mistake:** the library loaded into "the selected slot" (shown as "INTO REF 1"), so what a double-click did depended on state chosen on another screen; SUGGEST and favourites added features nobody needed.
+- **Rule:** a browser says where things go on the thing itself (per-row 1 2 3 buttons), every panel has an obvious way back (tabs plus the logo, as in Lucky Seven), and the main screen works without the power-user feature.
