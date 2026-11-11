@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include <CoreFoundation/CoreFoundation.h>
+#include <cstdlib>
 #include <iostream>
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter();
@@ -70,8 +71,31 @@ void setParameter (LuckyReferenceProcessor& processor, const juce::String& id, f
     parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
 }
 
-/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to leave ripples). */
-int snapshot (const juce::File& output, const juce::String& mode)
+/** Plays the mix through the processor in real time while the UI runs, so the radar reacts as it does in a host. */
+void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce::AudioBuffer<float>& mix, double seconds)
+{
+    constexpr double frame = 1.0 / 60.0;
+    const auto blocksPerFrame = rate * frame / blockSize;
+    juce::MidiBuffer midi;
+    juce::AudioBuffer<float> block (2, blockSize);
+    auto owed = 0.0;
+    for (auto elapsed = 0.0; elapsed < seconds; elapsed += frame)
+    {
+        for (owed += blocksPerFrame; owed >= 1.0; owed -= 1.0)
+        {
+            const auto start = static_cast<int> (head.time % (mix.getNumSamples() - blockSize));
+            for (int channel = 0; channel < 2; ++channel)
+                block.copyFrom (channel, 0, mix, channel, start, blockSize);
+            processor.processBlock (block, midi);
+            head.time += blockSize;
+        }
+        pumpMessages (frame);
+    }
+}
+
+/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
+    leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture). */
+int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
     processor->setPlayConfigDetails (2, 2, rate, blockSize);
@@ -131,6 +155,14 @@ int snapshot (const juce::File& output, const juce::String& mode)
             pumpMessages (0.35);
         }
     }
+    if (mode == "playing")
+    {
+        const auto mix = fakeSong ({ -3 }, 6.0, 4);
+        playFor (*processor, head, mix, 3.0);
+        setParameter (*processor, LuckyReferenceProcessor::slotId, 1.0f);
+        setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
+        playFor (*processor, head, mix, settleSeconds);
+    }
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 2.0f);
     output.deleteFile();
     juce::FileOutputStream stream (output);
@@ -146,8 +178,8 @@ int main (int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI juce;
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar>\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing> [settleSeconds]\n";
         return 1;
     }
-    return snapshot (juce::File (juce::String (argv[1])), juce::String (argv[2]));
+    return snapshot (juce::File (juce::String (argv[1])), juce::String (argv[2]), argc > 3 ? std::atof (argv[3]) : 0.6);
 }
