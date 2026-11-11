@@ -68,12 +68,6 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
         addAndMakeVisible (*rows[static_cast<size_t> (i)]);
     }
 
-    rings.levelSource = [this]
-    {
-        const auto& engine = owner.getEngine();
-        return lucky::LoudnessRings::Levels { engine.getMixFast(), referenceFast(), engine.getMixLoudness(),
-                                              lucky::theme::slotColour (selectedSlot), referenceOn };
-    };
     radar.levelSource = [this]
     {
         const auto& engine = owner.getEngine();
@@ -81,11 +75,9 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
         return lucky::RadarRipples::Levels { referenceOn ? referenceFast() : engine.getMixFast(), engine.getMixLoudness(),
                                              targetAccent(), origin };
     };
-    addChildComponent (radar);
-    addChildComponent (rings);
+    addAndMakeVisible (radar);
     readout.onPaint = [this] (juce::Graphics& g) { paintReadout (g, readout.getLocalBounds().toFloat()); };
     addAndMakeVisible (readout);
-    applyRingStyle();
     sourceSwitch.onToggle = [this] (bool on)
     {
         grabKeyboardFocus();
@@ -113,7 +105,6 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     slotAttachment.sendInitialUpdate();
     matchAttachment.sendInitialUpdate();
     accent = targetAccent();
-    matchButton.setColour (juce::Slider::rotarySliderFillColourId, accent);
 
     setWantsKeyboardFocus (true);
     owner.addChangeListener (this);
@@ -164,13 +155,11 @@ float LuckyReferenceView::referenceFast() const
 void LuckyReferenceView::syncControls()
 {
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
+    matchButton.setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::slotColour (selectedSlot));
 
     const auto colour = referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
     if (controlsSynced && (referenceOn != sourceSwitchShowsReference || selectedSlot != shownSlot))
-    {
-        rings.ripple (colour);
         radar.ripple (sourceSwitch.getPosition().toFloat() + sourceSwitch.getRestingKnobCentre() - radar.getPosition().toFloat(), colour);
-    }
     controlsSynced = true;
     sourceSwitchShowsReference = referenceOn;
     shownSlot = selectedSlot;
@@ -205,8 +194,6 @@ void LuckyReferenceView::timerCallback()
         if (std::abs (accent.getFloatRed() - target.getFloatRed()) + std::abs (accent.getFloatGreen() - target.getFloatGreen())
                 + std::abs (accent.getFloatBlue() - target.getFloatBlue()) < 0.01f)
             accent = target;
-        matchButton.setColour (juce::Slider::rotarySliderFillColourId, accent);
-        matchButton.repaint();
     }
 
     const auto& engine = owner.getEngine();
@@ -291,19 +278,20 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
             note = "Levels not matched";
     }
 
-    auto block = area.withSizeKeepingCentre (area.getWidth(), 92.0f);
+    const auto headlineRow = area.withSizeKeepingCentre (area.getWidth(), 38.0f);
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (11.0f));
-    g.drawText (label, block.removeFromTop (16.0f), juce::Justification::centredLeft);
+    g.drawText (label, headlineRow.translated (0.0f, -16.0f).withHeight (16.0f), juce::Justification::centredLeft);
     g.setColour (headlineColour);
     g.setFont (theme::labelFont (26.0f).withStyle ("Bold").withKerningFactor (0.02f));
-    g.drawText (headline, block.removeFromTop (38.0f), juce::Justification::centredLeft);
+    g.drawText (headline, headlineRow, juce::Justification::centredLeft);
+    auto block = area.withTop (headlineRow.getBottom());
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (12.0f));
     g.drawText (detail, block.removeFromTop (18.0f), juce::Justification::centredLeft);
     if (note.isNotEmpty())
     {
-        g.setColour (accent);
+        g.setColour (theme::slotColour (selectedSlot));
         g.drawText (note, block.removeFromTop (18.0f), juce::Justification::centredLeft);
     }
 }
@@ -321,22 +309,11 @@ void LuckyReferenceView::resized()
         area.removeFromTop (rowGap);
     }
 
-    auto stage = getLocalBounds().withTop (stageTop()).reduced (gutter, 0);
-    stage.removeFromLeft (sideColumnWidth);
+    auto stage = getLocalBounds().withTop (stageTop()).reduced (gutter, 0).withTrimmedBottom (hintHeight);
+    readout.setBounds (stage.removeFromLeft (sideColumnWidth));
     matchButton.setBounds (stage.removeFromRight (sideColumnWidth).removeFromRight (140).withSizeKeepingCentre (140, 34));
-    stage.removeFromBottom (hintHeight);
     sourceSwitch.setBounds (stage.withSizeKeepingCentre (220, 52));
     radar.setBounds (getLocalBounds().withTop (stageTop() + 1));
-    readout.setBounds (getLocalBounds().withTop (stageTop()).reduced (gutter, 0).removeFromLeft (sideColumnWidth));
-    rings.setBounds (stage);
-    rings.setCore (sourceSwitch.getBounds().toFloat() - rings.getPosition().toFloat());
-}
-
-void LuckyReferenceView::applyRingStyle()
-{
-    const auto radarStyle = settings->getRingStyle() == "radar";
-    radar.setVisible (radarStyle);
-    rings.setVisible (! radarStyle);
 }
 
 void LuckyReferenceView::showMenu()
@@ -351,12 +328,6 @@ void LuckyReferenceView::showMenu()
     menu.addSectionHeader (juce::String ("Lucky Reference v") + JucePlugin_VersionString);
     menu.addSubMenu ("Window size", sizes);
 
-    juce::PopupMenu styles;
-    const auto style = settings->getRingStyle();
-    for (const auto& [id, name] : { std::pair<juce::String, juce::String> { "radar", "Radar (Lucky Seven ripples)" },
-                                    std::pair<juce::String, juce::String> { "halo", "Halo" } })
-        styles.addItem (name, true, style == id, [this, id] { settings->setRingStyle (id); applyRingStyle(); });
-    menu.addSubMenu ("Ring style (preview)", styles);
     menu.addSeparator();
     menu.addItem ("Put it last on your master, after any limiter", false, false, [] {});
     menu.addItem ("Exports always contain your mix", false, false, [] {});

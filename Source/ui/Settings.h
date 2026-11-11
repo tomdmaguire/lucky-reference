@@ -23,12 +23,6 @@ public:
     /** The editor scale last chosen, 1.0 by default. */
     float getUiScale() const { return static_cast<float> (properties.getUserSettings()->getDoubleValue ("uiScale", 1.0)); }
 
-    /** The loudness display chosen in the menu: "radar" (Lucky Seven style ripples) or "halo". */
-    juce::String getRingStyle() const { return properties.getUserSettings()->getValue ("ringStyle", "radar"); }
-
-    /** Remembers the loudness display for every window. */
-    void setRingStyle (const juce::String& style) { properties.getUserSettings()->setValue ("ringStyle", style); }
-
     /** Remembers the editor scale for new windows. */
     void setUiScale (float scale)
     {
