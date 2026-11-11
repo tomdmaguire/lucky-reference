@@ -89,6 +89,54 @@ void writeQuietFlac (const juce::File& file, double seconds)
     }
 }
 
+/** A made-up song filtered to a tonal shape: lowpassed (dull), highpassed (thin) or squashed (dense), 30 s long. */
+juce::AudioBuffer<float> shapedSong (int seed, double lowpassHz, double highpassHz, bool squash)
+{
+    auto song = fakeSong ({ -6, -3, -2, -4, -2 }, 6.0, seed);
+    for (int channel = 0; channel < song.getNumChannels(); ++channel)
+    {
+        auto* samples = song.getWritePointer (channel);
+        auto low = 0.0f, previous = 0.0f;
+        const auto lowCoefficient = lowpassHz > 0.0 ? static_cast<float> (std::exp (-juce::MathConstants<double>::twoPi * lowpassHz / rate)) : 0.0f;
+        const auto highCoefficient = highpassHz > 0.0 ? static_cast<float> (std::exp (-juce::MathConstants<double>::twoPi * highpassHz / rate)) : 0.0f;
+        for (int i = 0; i < song.getNumSamples(); ++i)
+        {
+            auto sample = samples[i];
+            if (lowpassHz > 0.0)
+                sample = low = sample * (1.0f - lowCoefficient) + low * lowCoefficient;
+            if (highpassHz > 0.0)
+            {
+                previous = sample * (1.0f - highCoefficient) + previous * highCoefficient;
+                sample -= previous;
+            }
+            samples[i] = squash ? std::tanh (sample * 8.0f) * 0.25f : sample;
+        }
+    }
+    return song;
+}
+
+/** Fills the library with 30-second songs of different tonal shapes, for ranking against the snapshot's mix. */
+void fillShapedLibrary (const juce::File& library)
+{
+    struct Shape { const char* name; int seed; double lowpass, highpass; bool squash; };
+    const Shape shapes[] { { "Club/Low Tide (Extended)", 21, 900.0, 0.0, false }, { "Club/Satellite Hearts", 22, 0.0, 0.0, false },
+                           { "Club/Copper Sun", 23, 0.0, 0.0, true }, { "Indie/Paper Planes at Dawn", 24, 0.0, 400.0, false },
+                           { "Indie/Harbour Lights", 25, 3000.0, 0.0, false }, { "Concrete Garden", 26, 0.0, 1500.0, true },
+                           { "Velvet Static", 27, 0.0, 150.0, false } };
+    for (const auto& shape : shapes)
+    {
+        const auto file = library.getChildFile (juce::String (shape.name) + ".flac");
+        file.getParentDirectory().createDirectory();
+        file.deleteFile();
+        const auto song = shapedSong (shape.seed, shape.lowpass, shape.highpass, shape.squash);
+        juce::FlacAudioFormat format;
+        std::unique_ptr<juce::OutputStream> stream = file.createOutputStream();
+        const auto options = juce::AudioFormatWriterOptions().withSampleRate (rate).withNumChannels (2).withBitsPerSample (16);
+        if (auto writer = format.createWriterFor (stream, options))
+            writer->writeFromAudioSampleBuffer (song, 0, song.getNumSamples());
+    }
+}
+
 /** Fills the library with made-up tracks in a couple of folders, two of them favourites. */
 void fillLibrary (const juce::File& library, const juce::File& state)
 {
@@ -133,7 +181,7 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
 
 /** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
     leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
-    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
+    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -151,11 +199,19 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         writeWav (files[0], fakeSong ({ -20, -8, -4, -10, -2, -2, -14 }, 24.0, 1));
         writeWav (files[1], fakeSong ({ -14, -6, 0, 0, -16, -2, 1, 1, -20 }, 20.0, 2));
         writeWav (files[2], fakeSong ({ -10, -4, -4, -12, -3, -3, -6 }, 26.0, 3));
-        for (int i = 0; i < 3; ++i)
+        const auto slotsToLoad = mode == "closest" ? 1 : 3;
+        for (int i = 0; i < slotsToLoad; ++i)
             processor->loadFile (i, files[i]);
 
-        for (int attempt = 0; attempt < 300 && (processor->getTrack (0) == nullptr || processor->getTrack (1) == nullptr || processor->getTrack (2) == nullptr); ++attempt)
+        for (int attempt = 0; attempt < 300; ++attempt)
+        {
+            auto loaded = true;
+            for (int i = 0; i < slotsToLoad; ++i)
+                loaded = loaded && processor->getTrack (i) != nullptr;
+            if (loaded)
+                break;
             pumpMessages (0.02);
+        }
 
         processor->setLoop (0, { 50.0, 72.0 });
         processor->setLoop (1, { 120.0, 140.0 });
@@ -182,6 +238,29 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         }
     }
 
+    if (mode == "closest")
+    {
+        const auto mix = fakeSong ({ -3, -2, -4 }, 5.0, 4);
+        for (int pass = 0; pass < 2; ++pass)
+        {
+            juce::MidiBuffer midi;
+            for (int start = 0; start + blockSize <= mix.getNumSamples(); start += blockSize)
+            {
+                juce::AudioBuffer<float> block (2, blockSize);
+                for (int channel = 0; channel < 2; ++channel)
+                    block.copyFrom (channel, 0, mix, channel, start, blockSize);
+                processor->processBlock (block, midi);
+                head.time += blockSize;
+                if (start % (blockSize * 200) == 0)
+                    processor->updateMixProfile();
+            }
+            processor->updateMixProfile();
+        }
+        processor->getLibrary().rescan();
+        for (int attempt = 0; attempt < 500 && processor->getLibrary().isReading(); ++attempt)
+            pumpMessages (0.02);
+    }
+
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor->createEditorAndMakeActive());
     pumpMessages (1.0);
 
@@ -194,10 +273,10 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
             pumpMessages (0.35);
         }
     }
-    if (mode.startsWith ("library"))
+    if (mode.startsWith ("library") || mode == "closest")
     {
         setParameter (*processor, LuckyReferenceProcessor::slotId, 1.0f);
-        dynamic_cast<LuckyReferenceEditor&> (*editor).showLibrary();
+        dynamic_cast<LuckyReferenceEditor&> (*editor).showLibrary (mode == "closest");
         for (int attempt = 0; attempt < 300 && processor->getLibrary().isReading(); ++attempt)
             pumpMessages (0.02);
         pumpMessages (0.3);
@@ -225,7 +304,7 @@ int main (int argc, char** argv)
 {
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|outside> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|closest|outside> [settleSeconds]\n";
         return 1;
     }
 
@@ -234,6 +313,8 @@ int main (int argc, char** argv)
     library.createDirectory();
     if (juce::String (argv[2]) == "library")
         fillLibrary (library, state);
+    if (juce::String (argv[2]) == "closest")
+        fillShapedLibrary (library);
     setenv ("LUCKY_REFERENCE_LIBRARY", library.getFullPathName().toRawUTF8(), 1);
     setenv ("LUCKY_REFERENCE_STATE", state.getFullPathName().toRawUTF8(), 1);
 

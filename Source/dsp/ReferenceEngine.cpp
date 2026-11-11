@@ -11,6 +11,8 @@ constexpr float silentLufs = -std::numeric_limits<float>::infinity();
 void ReferenceEngine::prepare (double rate, int maximumBlockSize)
 {
     sampleRate = rate;
+    tapRate.store (rate);
+    mixTapFifo.reset();
     mixMeter.prepare (rate);
     lastMeasuredSeconds = 0.0;
     mixLoudness.store (silentLufs);
@@ -41,6 +43,14 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
 
     wasPlaying = false;
     expectedTime.reset();
+}
+
+int ReferenceEngine::readMixTap (float* dest, int maxSamples) noexcept
+{
+    const auto read = mixTapFifo.read (std::min (maxSamples, mixTapFifo.getNumReady()));
+    std::copy_n (mixTap.begin() + read.startIndex1, read.blockSize1, dest);
+    std::copy_n (mixTap.begin() + read.startIndex2, read.blockSize2, dest + read.blockSize1);
+    return read.blockSize1 + read.blockSize2;
 }
 
 void ReferenceEngine::setSlot (int slot, ReferenceTrackPtr track, const LoopRegion& loop)
@@ -134,7 +144,16 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
 
     followTransport (transport, n);
     if (transport.isPlaying)
+    {
         mixMeter.process (buffer.getArrayOfReadPointers(), 2, n);
+        const auto write = mixTapFifo.write (std::min (n, mixTapFifo.getFreeSpace()));
+        const auto* left = buffer.getReadPointer (0);
+        const auto* right = buffer.getReadPointer (1);
+        for (int i = 0; i < write.blockSize1; ++i)
+            mixTap[static_cast<size_t> (write.startIndex1 + i)] = 0.5f * (left[i] + right[i]);
+        for (int i = 0; i < write.blockSize2; ++i)
+            mixTap[static_cast<size_t> (write.startIndex2 + i)] = 0.5f * (left[write.blockSize1 + i] + right[write.blockSize1 + i]);
+    }
     mixFast.store (transport.isPlaying ? mixMeter.getFast() : silentLufs);
     playing.store (transport.isPlaying);
     updateMatching (controls, sources);

@@ -104,10 +104,20 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
   - Search box: every word must appear in the track name or its folder. Up and down move through the results without leaving the box, Return loads the highlighted track, and Escape clears the search, then closes the panel.
   - Each row: heart, name, folder, a marker in the slot's colour if the track is already loaded, format badge and length.
   - Favourites (hearts) sort first and are kept in `favourites.json` next to the cache, so clearing the cache never loses them.
-  - Double-click, Return or a file dropped on the panel loads into the selected slot, shown in the header as "LOADS INTO REF n". BROWSE FILES... opens a file browser instead.
+  - Double-click, Return or a file dropped on the panel loads into the selected slot, shown in the header as "INTO REF n". BROWSE... opens a file browser instead.
   - When the library is empty, the panel says where to put tracks and offers SHOW IN FINDER.
 - **Add to library:** a reference loaded from outside the library shows a small ADD TO LIBRARY button on its slot (also in the slot's menu). It copies the file into the top of the library on a background thread and points the slot at the copy, keeping the audio and loop as they are. Nothing is ever copied without asking. A file with the same name and size already in the library is reused; a different file with the same name gets a number.
 - The three-dot menu has "Show library in Finder".
+
+### 10. Closest to your mix
+
+- **Tonal profile:** the same analysis for a library track and for the mix. A mono sum is split into 27 third-octave bands from 31.5 Hz to 12.5 kHz (8192-point Hann FFT frames with 50% overlap at 48 kHz; 16384 points above 64 kHz), averaged in energy, and expressed in dB relative to the average band, so loudness has no effect. The bands stop below 16 kHz on purpose: lossy files cut the top end there, and a lossy reference shouldn't count as different just for that. **Punch** is the median peak-to-RMS ratio of one-second windows: limiting lowers it.
+- **Gating:** audio counts only if the second around it is above -70 dBFS and within 10 dB of the average, so silence, fades and quiet intros are ignored while the gaps between drum hits still count.
+- **Library side:** each track is analysed once by the library thread, reading the file in chunks (up to 15 minutes), and the profile is cached with the track's details. A 4-5 minute track takes 0.3-0.45 s.
+- **Mix side:** while the transport plays, the audio thread copies the mono mix into a preallocated lock-free FIFO next to the loudness meter (no allocation or locks). The processor's timer drains it twice a second into an analyser covering the last two minutes played, so the profile follows the mix as it changes. It isn't reset when playback restarts. It counts as ready after 20 seconds of gated playback.
+- **Distance:** the RMS difference across the bands combined with the punch difference, in dB. Different productions in one genre are typically 3-7 dB apart. The match bar shows `exp(-distance / 9 dB)`, as a bar with no percentage, so it reads as a ranking rather than a grade.
+- **CLOSEST** (next to A-Z in the library header) sorts by match, closest first, still filtered by the search. Until the mix is ready, a line under the header says how many seconds have been heard. The order is fixed when CLOSEST is chosen or the library opens, so rows don't move while you browse; tracks still being analysed go last and move up once analysed.
+- **SUGGEST** fills each empty slot with the closest matches not already loaded, best first, then closes the library. It never replaces a loaded slot, and it's disabled (with a tooltip saying why) until the mix is ready, while no slot is empty, or while no library track has a profile.
 
 ## UI
 
@@ -163,11 +173,11 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 ## Later
 
 - A shared Lucky UI library for both plugins: theme, look and feel, seven-segment glyphs, menu icon and the scaling editor are currently copied from Lucky Seven.
-- Suggest references from the library whose tonal balance and dynamics are closest to the mix (planned for v0.2).
 
 ## Performance (measured)
 
-- Engine, 48 kHz, three 4-minute references: average 0.05-0.09% of each block's time budget; p99.9 under 3%; worst block under 6% at 64 samples and under 15% at 32 samples (`tools/Benchmark.cpp`).
+- Engine, 48 kHz, three 4-minute references: average 0.05-0.09% of each block's time budget; p99.9 under 3%; worst block under 6% at 64 samples and under 15% at 32 samples (`tools/Benchmark.cpp`). Re-measured with the mix tap for closest matching: average 0.04-0.08%, p99.9 at most 0.2%, worst block 2.7% at 32 samples.
+- Library analysis of a 4-5 minute track: 0.3-0.45 s on the library thread (`tools/ProfileTool.cpp`).
 - Whole plugin through a VST3 host with no references playing: 0.02% of a core at 64 samples.
 - Loading a 4-minute 44.1 kHz file at 48 kHz: 0.3 s. Memory: about 92 MB per 4-minute reference; loading briefly needs about twice one track.
 - pluginval strictness 10: all 25 test groups pass. No leaks in the processor tests.
@@ -191,3 +201,5 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 - Closing the editor switches back to the mix.
 - The library finds tracks in subfolders, reuses cached details and re-reads changed files, drops deleted files, keeps favourites first across restarts, matches searches on every word, and imports a file once (numbering a different file with the same name).
 - Adding a reference to the library keeps its audio and loop and saves the library copy's path with the session.
+- Tonal profiles ignore loudness, show a dull track as dull, ignore silence and quiet passages, show limiting as lower punch, forget audio outside the window, don't depend on block size, and rank a mix's matching reference first. Cached profiles match a fresh analysis.
+- The mix profile needs 20 s of playback and ignores a stopped transport; SUGGEST fills only empty slots, closest first.

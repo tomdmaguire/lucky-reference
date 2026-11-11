@@ -13,11 +13,12 @@ constexpr int blockSize = 512;
 struct PlayingHead final : juce::AudioPlayHead
 {
     juce::int64 time = 0;
+    bool playing = true;
 
     juce::Optional<PositionInfo> getPosition() const override
     {
         PositionInfo info;
-        info.setIsPlaying (true);
+        info.setIsPlaying (playing);
         info.setTimeInSamples (time);
         info.setBpm (120.0);
         info.setPpqPosition (static_cast<double> (time) / rate * 2.0);
@@ -198,6 +199,59 @@ public:
             expect (pumpUntil ([&] { return restored->getTrack (1) != nullptr; }));
             expectEquals (restored->getFile (1).getFullPathName(), copy.getFullPathName());
             expectWithinAbsoluteError (restored->getLoop (1).endSeconds, 6.0, 1.0e-9);
+        }
+
+        beginTest ("The mix can be compared with the library after 20 seconds of playback");
+        {
+            auto processor = makeProcessor();
+            PlayingHead head;
+            processor->setPlayHead (&head);
+            const auto playFor = [&] (double seconds)
+            {
+                for (auto played = 0.0; played < seconds; played += 5.0)
+                {
+                    run (*processor, head, lucky::test::sine (-12.0f, 5.0, rate));
+                    processor->updateMixProfile();
+                }
+            };
+
+            head.playing = false;
+            playFor (30.0);
+            expectEquals (processor->getMixProfileSeconds(), 0.0, "nothing is heard while the transport is stopped");
+
+            head.playing = true;
+            playFor (10.0);
+            expect (! processor->getMixProfile().has_value());
+            expectWithinAbsoluteError (processor->getMixProfileSeconds(), 10.0, 0.5);
+            playFor (15.0);
+            expect (processor->getMixProfile().has_value());
+        }
+
+        beginTest ("SUGGEST fills only the empty slots, closest match first");
+        {
+            auto processor = makeProcessor();
+            const auto root = processor->getLibrary().getRoot();
+            lucky::test::writeWav (root.getChildFile ("Low.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 100.0), rate);
+            lucky::test::writeWav (root.getChildFile ("Middle.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 1000.0), rate);
+            lucky::test::writeWav (root.getChildFile ("High.wav"), lucky::test::sine (-12.0f, 4.0, rate, 2, 5000.0), rate);
+            processor->getLibrary().rescan();
+            expect (pumpUntil ([&] { return ! processor->getLibrary().isReading(); }));
+            processor->loadFile (0, referenceFile);
+
+            PlayingHead head;
+            processor->setPlayHead (&head);
+            expectEquals (processor->suggestReferences(), 0, "nothing to suggest before the mix is known");
+            for (int chunk = 0; chunk < 5; ++chunk)
+            {
+                run (*processor, head, lucky::test::sine (-20.0f, 5.0, rate, 2, 1000.0));
+                processor->updateMixProfile();
+            }
+
+            expectEquals (processor->suggestReferences(), 2);
+            expectEquals (processor->getFile (0).getFullPathName(), referenceFile.getFullPathName(), "a loaded slot is never replaced");
+            expectEquals (processor->getFile (1).getFileName(), juce::String ("Middle.wav"));
+            expect (processor->getFile (2).existsAsFile() && processor->getFile (2).getFileName() != "Middle.wav");
+            expectEquals (processor->suggestReferences(), 0, "no empty slots left");
         }
 
         beginTest ("A missing file keeps its path and reports the problem");

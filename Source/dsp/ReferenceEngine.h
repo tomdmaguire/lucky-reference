@@ -4,6 +4,7 @@
 #include "ReferencePlayer.h"
 #include <array>
 #include <optional>
+#include <vector>
 
 namespace lucky
 {
@@ -71,6 +72,13 @@ public:
     /** True until the mix has been measured long enough to match against. */
     bool isMeasuring() const noexcept { return ! std::isfinite (getMixLoudness()); }
 
+    /** Message thread: copies up to maxSamples of the mono mix played since the last call into dest and returns how
+        many were copied. Only audio heard while the transport plays is kept, so this follows the mix as performed. */
+    int readMixTap (float* dest, int maxSamples) noexcept;
+
+    /** The sample rate of the mix tap. */
+    double getMixTapRate() const noexcept { return tapRate.load(); }
+
     /** Playhead of a slot in samples of its track. */
     juce::int64 getPosition (int slot) const noexcept { return players[static_cast<size_t> (slot)].getPosition(); }
 
@@ -105,6 +113,11 @@ private:
     std::atomic<bool> playing { false };
     std::optional<juce::int64> expectedTime;
     juce::AudioBuffer<float> scratch;
+    /** Mono mix for tonal analysis, about 10 s at 48 kHz, allocated once so prepare never reallocates it under a reader. */
+    static constexpr int mixTapSize = 1 << 19;
+    std::vector<float> mixTap = std::vector<float> (static_cast<size_t> (mixTapSize));
+    juce::AbstractFifo mixTapFifo { mixTapSize };
+    std::atomic<double> tapRate { 48000.0 };
 };
 
 } // namespace lucky

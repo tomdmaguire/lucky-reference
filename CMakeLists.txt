@@ -50,6 +50,7 @@ set(LUCKY_REFERENCE_CORE_SOURCES
     Source/dsp/ReferencePlayer.cpp
     Source/dsp/ReferenceEngine.cpp
     Source/library/ReferenceLibrary.cpp
+    Source/library/TonalProfile.cpp
 )
 
 target_sources(LuckyReference PRIVATE
@@ -90,6 +91,7 @@ target_sources(LuckyReferenceTests PRIVATE
     Tests/ReferenceTrackTests.cpp
     Tests/ReferenceEngineTests.cpp
     Tests/LibraryTests.cpp
+    Tests/TonalProfileTests.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}
 )
 
@@ -141,3 +143,8 @@ target_compile_definitions(LuckyReferenceBench PRIVATE JUCE_WEB_BROWSER=0 JUCE_U
 target_link_libraries(LuckyReferenceBench
     PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
+
+add_executable(LuckyReferenceProfile tools/ProfileTool.cpp)
+target_include_directories(LuckyReferenceProfile PRIVATE Source $<TARGET_PROPERTY:LuckyReference,INCLUDE_DIRECTORIES>)
+target_compile_definitions(LuckyReferenceProfile PRIVATE $<TARGET_PROPERTY:LuckyReference,COMPILE_DEFINITIONS>)
+target_link_libraries(LuckyReferenceProfile PRIVATE LuckyReference)

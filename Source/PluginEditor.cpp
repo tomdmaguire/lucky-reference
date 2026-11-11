@@ -89,6 +89,21 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
                 return i;
         return -1;
     };
+    libraryPanel.mixProfile = [this] { return owner.getMixProfile(); };
+    libraryPanel.mixSeconds = [this] { return owner.getMixProfileSeconds(); };
+    libraryPanel.mixSecondsNeeded = LuckyReferenceProcessor::mixProfileReadySeconds;
+    libraryPanel.hasEmptySlot = [this]
+    {
+        for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
+            if (owner.getFile (i) == juce::File())
+                return true;
+        return false;
+    };
+    libraryPanel.onSuggest = [this]
+    {
+        owner.suggestReferences();
+        closeLibrary();
+    };
     addChildComponent (libraryPanel);
 
     libraryButton.setWantsKeyboardFocus (false);
@@ -162,8 +177,10 @@ bool LuckyReferenceView::keyPressed (const juce::KeyPress& key)
     return false;
 }
 
-void LuckyReferenceView::openLibrary()
+void LuckyReferenceView::openLibrary (bool closest)
 {
+    if (closest)
+        libraryPanel.setClosest (true);
     libraryPanel.setTarget (selectedSlot);
     libraryPanel.setVisible (true);
     libraryButton.setToggleState (true, juce::dontSendNotification);

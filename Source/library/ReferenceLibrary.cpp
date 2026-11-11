@@ -6,7 +6,31 @@ namespace lucky
 
 namespace
 {
-constexpr int cacheVersion = 1;
+constexpr int cacheVersion = 2;
+constexpr int analysisChunk = 1 << 16;
+
+juce::var profileToVar (const TonalProfile& profile)
+{
+    juce::Array<juce::var> bands;
+    for (const auto level : profile.bandsDb)
+        bands.add (std::round (level * 100.0f) / 100.0f);
+    auto* object = new juce::DynamicObject();
+    object->setProperty ("bands", bands);
+    object->setProperty ("punch", std::round (profile.punchDb * 100.0f) / 100.0f);
+    return juce::var (object);
+}
+
+std::optional<TonalProfile> profileFromVar (const juce::var& value)
+{
+    const auto* bands = value["bands"].getArray();
+    if (bands == nullptr || bands->size() != TonalProfile::numBands)
+        return std::nullopt;
+    TonalProfile profile;
+    for (int i = 0; i < TonalProfile::numBands; ++i)
+        profile.bandsDb[static_cast<size_t> (i)] = static_cast<float> ((*bands)[i]);
+    profile.punchDb = static_cast<float> (value["punch"]);
+    return profile;
+}
 
 juce::File folderFromEnvironment (const char* name, const juce::File& fallback)
 {
@@ -94,6 +118,8 @@ void ReferenceLibrary::rescan()
             {
                 entry.format = it->second.format;
                 entry.seconds = it->second.seconds;
+                entry.profile = it->second.profile;
+                entry.analysed = true;
             }
             else
             {
@@ -138,6 +164,9 @@ void ReferenceLibrary::run()
         details.format = describeFileFormat (entry.file);
         if (std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (entry.file)); reader != nullptr && reader->sampleRate > 0.0)
             details.seconds = static_cast<double> (reader->lengthInSamples) / reader->sampleRate;
+        details.profile = analyseFile (entry.file, formats);
+        if (threadShouldExit())
+            break;
 
         {
             const juce::ScopedLock scope (lock);
@@ -147,6 +176,8 @@ void ReferenceLibrary::run()
                 {
                     shown.format = details.format;
                     shown.seconds = details.seconds;
+                    shown.profile = details.profile;
+                    shown.analysed = true;
                 }
         }
         cacheChanged = true;
@@ -209,6 +240,43 @@ juce::File ReferenceLibrary::importFile (const juce::File& source)
     return target;
 }
 
+std::optional<TonalProfile> ReferenceLibrary::analyseFile (const juce::File& file, juce::AudioFormatManager& formats)
+{
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->sampleRate <= 0.0 || reader->numChannels == 0)
+        return std::nullopt;
+
+    TonalAnalyser analyser (reader->sampleRate);
+    const auto channels = static_cast<int> (std::min (2u, reader->numChannels));
+    const auto length = std::min (reader->lengthInSamples, static_cast<juce::int64> (maxAnalysisSeconds * reader->sampleRate));
+    juce::AudioBuffer<float> chunk (channels, analysisChunk);
+    std::vector<float> mono (analysisChunk);
+    for (juce::int64 start = 0; start < length; start += analysisChunk)
+    {
+        if (juce::Thread::currentThreadShouldExit())
+            return std::nullopt;
+        const auto count = static_cast<int> (std::min<juce::int64> (analysisChunk, length - start));
+        if (! reader->read (&chunk, 0, count, start, true, channels > 1))
+            return std::nullopt;
+        for (int i = 0; i < count; ++i)
+            mono[static_cast<size_t> (i)] = channels > 1 ? 0.5f * (chunk.getSample (0, i) + chunk.getSample (1, i)) : chunk.getSample (0, i);
+        analyser.process (mono.data(), count);
+    }
+    return analyser.getProfile();
+}
+
+void ReferenceLibrary::sortClosestFirst (std::vector<LibraryEntry>& entries, const TonalProfile& mix)
+{
+    std::stable_sort (entries.begin(), entries.end(), [&mix] (const LibraryEntry& a, const LibraryEntry& b)
+                      {
+                          if (a.profile.has_value() != b.profile.has_value())
+                              return a.profile.has_value();
+                          if (! a.profile)
+                              return a.name.compareNatural (b.name) < 0;
+                          return TonalProfile::distance (*a.profile, mix) < TonalProfile::distance (*b.profile, mix);
+                      });
+}
+
 juce::StringArray ReferenceLibrary::parseSearch (const juce::String& text)
 {
     auto words = juce::StringArray::fromTokens (text.toLowerCase(), true);
@@ -239,7 +307,7 @@ void ReferenceLibrary::loadState()
         return;
     if (const auto* tracks = parsed["tracks"].getDynamicObject())
         for (const auto& [key, value] : tracks->getProperties())
-            cache[key.toString()] = { value["format"].toString(), static_cast<double> (value["seconds"]) };
+            cache[key.toString()] = { value["format"].toString(), static_cast<double> (value["seconds"]), profileFromVar (value["profile"]) };
 }
 
 void ReferenceLibrary::saveCache() const
@@ -252,6 +320,8 @@ void ReferenceLibrary::saveCache() const
             auto* track = new juce::DynamicObject();
             track->setProperty ("format", details.format);
             track->setProperty ("seconds", details.seconds);
+            if (details.profile)
+                track->setProperty ("profile", profileToVar (*details.profile));
             tracks->setProperty (juce::Identifier (key), juce::var (track));
         }
     }

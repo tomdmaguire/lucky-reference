@@ -185,6 +185,58 @@ void LuckyReferenceProcessor::changeListenerCallback (juce::ChangeBroadcaster*)
 void LuckyReferenceProcessor::timerCallback()
 {
     engine.collectGarbage();
+    updateMixProfile();
+}
+
+void LuckyReferenceProcessor::updateMixProfile()
+{
+    const auto rate = engine.getMixTapRate();
+    if (mixAnalyser == nullptr || std::abs (mixAnalyser->getSampleRate() - rate) > 0.5)
+        mixAnalyser = std::make_unique<lucky::TonalAnalyser> (rate, mixProfileWindowSeconds);
+
+    mixTapScratch.resize (8192);
+    auto received = 0;
+    for (int count; (count = engine.readMixTap (mixTapScratch.data(), static_cast<int> (mixTapScratch.size()))) > 0;)
+    {
+        mixAnalyser->process (mixTapScratch.data(), count);
+        received += count;
+    }
+    if (received == 0)
+        return;
+
+    mixProfileSeconds = mixAnalyser->getGatedSeconds();
+    mixProfile = mixAnalyser->getProfile();
+}
+
+std::optional<lucky::TonalProfile> LuckyReferenceProcessor::getMixProfile() const
+{
+    return mixProfileSeconds >= mixProfileReadySeconds ? mixProfile : std::nullopt;
+}
+
+int LuckyReferenceProcessor::suggestReferences()
+{
+    const auto mix = getMixProfile();
+    if (! mix)
+        return 0;
+
+    auto candidates = library->getEntries();
+    candidates.erase (std::remove_if (candidates.begin(), candidates.end(), [this] (const lucky::LibraryEntry& entry)
+                                      {
+                                          if (! entry.profile)
+                                              return true;
+                                          for (int i = 0; i < numSlots; ++i)
+                                              if (getFile (i) == entry.file)
+                                                  return true;
+                                          return false;
+                                      }),
+                      candidates.end());
+    lucky::ReferenceLibrary::sortClosestFirst (candidates, *mix);
+
+    auto filled = 0;
+    for (int i = 0; i < numSlots && filled < static_cast<int> (candidates.size()); ++i)
+        if (getFile (i) == juce::File())
+            loadFile (i, candidates[static_cast<size_t> (filled++)].file);
+    return filled;
 }
 
 void LuckyReferenceProcessor::getStateInformation (juce::MemoryBlock& destData)

@@ -64,6 +64,8 @@ public:
             expectWithinAbsoluteError (charlie->seconds, 3.0, 0.01);
             expect (library.contains (charlie->file));
             expectEquals (findEntry (entries, "alpha.wav")->folder, juce::String(), "top-level tracks have no folder");
+            expect (charlie->analysed);
+            expect (charlie->profile.has_value(), "an audible track gets a tonal profile");
             expect (! library.contains (folder.getChildFile ("elsewhere.wav")));
         }
 
@@ -72,7 +74,16 @@ public:
             {
                 ReferenceLibrary library (root, state);
                 expect (! library.isReading(), "nothing new to read");
-                expectWithinAbsoluteError (findEntry (library.getEntries(), "Bravo.wav")->seconds, 2.0, 0.01);
+                const auto entries = library.getEntries();
+                const auto* bravo = findEntry (entries, "Bravo.wav");
+                expectWithinAbsoluteError (bravo->seconds, 2.0, 0.01);
+                expect (bravo->analysed && bravo->profile.has_value(), "the profile comes from the cache");
+
+                juce::AudioFormatManager formats;
+                formats.registerBasicFormats();
+                const auto fresh = ReferenceLibrary::analyseFile (bravo->file, formats);
+                expect (fresh.has_value());
+                expectLessThan (TonalProfile::distance (*fresh, *bravo->profile), 0.05f, "the cached profile matches a fresh analysis");
             }
 
             test::writeWav (root.getChildFile ("Bravo.wav"), test::sine (-12.0f, 4.0, rate), rate);

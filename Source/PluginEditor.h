@@ -26,8 +26,8 @@ public:
     /** The editor's current scale, for ticking the Window size menu. */
     std::function<float()> getScale;
 
-    /** Shows the library over the slots, loading into the selected slot. */
-    void openLibrary();
+    /** Shows the library over the slots, loading into the selected slot, optionally sorted closest first. */
+    void openLibrary (bool closest = false);
 
     /** Hides the library and returns to the slots. */
     void closeLibrary();
@@ -87,8 +87,8 @@ public:
 
     void resized() override;
 
-    /** Opens the library panel, as the LIBRARY button does. */
-    void showLibrary() { view.openLibrary(); }
+    /** Opens the library panel, as the LIBRARY button does, optionally sorted closest first. */
+    void showLibrary (bool closest = false) { view.openLibrary (closest); }
 
 private:
     float currentScale() const;

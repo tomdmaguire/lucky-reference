@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TonalProfile.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_events/juce_events.h>
 #include <map>
@@ -22,6 +23,10 @@ struct LibraryEntry
     juce::String format;
     /** Length in seconds, 0 until the details are read. */
     double seconds = 0.0;
+    /** How the track sounds, once analysed; stays empty for silent or unreadable files. */
+    std::optional<TonalProfile> profile;
+    /** True once the file's details and profile have been read. */
+    bool analysed = false;
     bool favourite = false;
 };
 
@@ -59,6 +64,12 @@ public:
     /** True while file details are still being read. */
     bool isReading() const { return isThreadRunning(); }
 
+    /** Longest stretch of a file that is analysed. */
+    static constexpr double maxAnalysisSeconds = 15.0 * 60.0;
+
+    /** Reads a file in chunks and returns its tonal profile, or nothing if it can't be read or is silent. */
+    static std::optional<TonalProfile> analyseFile (const juce::File& file, juce::AudioFormatManager& formats);
+
     /** Adds the entry to favourites, or removes it. */
     void toggleFavourite (const juce::String& key);
 
@@ -66,6 +77,9 @@ public:
         there is reused; a different file with the same name gets a number. Safe to call from any thread; returns a
         nonexistent file if the copy fails. */
     juce::File importFile (const juce::File& source);
+
+    /** Orders entries by how close they sound to a mix, closest first; entries without a profile go last, by name. */
+    static void sortClosestFirst (std::vector<LibraryEntry>& entries, const TonalProfile& mix);
 
     /** Splits search text into lower-case words. */
     static juce::StringArray parseSearch (const juce::String& text);
@@ -78,6 +92,7 @@ private:
     {
         juce::String format;
         double seconds = 0.0;
+        std::optional<TonalProfile> profile;
     };
 
     void run() override;

@@ -31,3 +31,7 @@ Carried over from Lucky Seven where they apply.
 ## Shortcut hints must look like keys
 - **Mistake:** "1 2 3 SLOTS" read as labels, not number keys, and used an internal word.
 - **Rule:** draw shortcuts as keycaps and label them with the product's own words ("reference", not "slot").
+
+## Never keep a pointer into a temporary
+- **Mistake:** `if (const auto* list = JSON::parse (file).getArray())` and `const auto* entry = findEntry (library.getEntries(), key)` both pointed into a value destroyed at the end of the statement, so favourites silently failed to load and a test read garbage.
+- **Rule:** when a call returns by value (`var`, `std::vector`, a `unique_ptr` from a factory), store it in a named local before taking a pointer or reference into it or into anything it owns. `makeProcessor()->getLibrary()` crashed the same way: the temporary processor was the shared library's last owner.

@@ -21,6 +21,10 @@ public:
     static inline const juce::Identifier loopStartProperty { "loopStart" };
     static inline const juce::Identifier loopEndProperty { "loopEnd" };
     static constexpr double autoLoopSeconds = 16.0;
+    /** Seconds of the mix played (ignoring silence) before it can be compared with the library. */
+    static constexpr double mixProfileReadySeconds = 20.0;
+    /** How much recent playback the mix's tonal profile covers. */
+    static constexpr double mixProfileWindowSeconds = 120.0;
 
     LuckyReferenceProcessor();
     ~LuckyReferenceProcessor() override;
@@ -61,6 +65,20 @@ public:
 
     /** The reference library shared by every instance. */
     lucky::ReferenceLibrary& getLibrary() noexcept { return *library; }
+
+    /** Message thread: folds the mix played since the last call into its tonal profile. Runs on a timer; tests call it
+        directly. */
+    void updateMixProfile();
+
+    /** How the mix sounds over the last two minutes played, once at least mixProfileReadySeconds have been heard. */
+    std::optional<lucky::TonalProfile> getMixProfile() const;
+
+    /** Seconds of the mix heard so far for its profile (capped at the window). */
+    double getMixProfileSeconds() const noexcept { return mixProfileSeconds; }
+
+    /** Fills each empty slot with the closest library track not already loaded, best match first, and returns how many
+        were filled. Loaded slots are never replaced. */
+    int suggestReferences();
 
     /** Empties a slot. */
     void clearSlot (int slot);
@@ -109,6 +127,10 @@ private:
     std::atomic<float>* slotParameter = nullptr;
     std::atomic<float>* matchParameter = nullptr;
     double preparedRate = 0.0;
+    std::unique_ptr<lucky::TonalAnalyser> mixAnalyser;
+    std::vector<float> mixTapScratch;
+    std::optional<lucky::TonalProfile> mixProfile;
+    double mixProfileSeconds = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LuckyReferenceProcessor)
 };
