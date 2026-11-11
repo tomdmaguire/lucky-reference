@@ -158,13 +158,32 @@ void SlotRow::paint (juce::Graphics& g)
     g.setColour (theme::text.withAlpha (audible ? 0.95f : 0.4f));
     g.fillRect (playheadX - 0.5f, area.getY() - 2.0f, 1.0f, area.getHeight() + 4.0f);
 
-    g.setColour (selected ? theme::text : theme::textDim);
-    g.drawText (track->getName(), label, juce::Justification::centredLeft, true);
-
     const auto lengthText = loop.isSet() ? juce::String (static_cast<double> (range.getLength()) / track->getSampleRate(), 1) + " s loop"
                                          : juce::String ("Drag to choose a loop");
     g.setColour (theme::textDim);
     g.drawText (lengthText, label, juce::Justification::centredRight, true);
+
+    const auto nameFont = g.getCurrentFont();
+    auto nameArea = label.withTrimmedRight (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), lengthText) + 24.0f);
+    const auto& format = track->getFormat();
+    if (format.isNotEmpty())
+    {
+        const auto formatFont = theme::labelFont (10.0f).withStyle ("Bold");
+        const auto formatWidth = juce::GlyphArrangement::getStringWidth (formatFont, format) + 12.0f;
+        const auto nameWidth = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), track->getName());
+        const auto tagX = std::min (nameArea.getX() + nameWidth + 10.0f, nameArea.getRight() - formatWidth);
+        const auto tag = juce::Rectangle<float> (tagX, label.getCentreY() - 8.0f, formatWidth, 16.0f);
+        g.setColour (theme::outline.brighter (0.3f));
+        g.drawRoundedRectangle (tag.reduced (0.5f), 3.0f, 1.0f);
+        g.setColour (theme::textDim);
+        g.setFont (formatFont);
+        g.drawText (format, tag, juce::Justification::centred);
+        g.setFont (nameFont);
+        nameArea.setRight (tag.getX() - 10.0f);
+    }
+
+    g.setColour (selected ? theme::text : theme::textDim);
+    g.drawText (track->getName(), nameArea, juce::Justification::centredLeft, true);
 }
 
 void SlotRow::mouseMove (const juce::MouseEvent& event)

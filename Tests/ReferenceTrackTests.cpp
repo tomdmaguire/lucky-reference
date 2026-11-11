@@ -1,5 +1,6 @@
 #include "TestSignals.h"
 #include "dsp/LoudnessMeter.h"
+#include "ref/FileFormat.h"
 #include "ref/ReferenceLoader.h"
 
 using namespace lucky;
@@ -106,6 +107,29 @@ public:
             junk.replaceWithText ("not audio");
             expect (ReferenceTrack::load (junk, 48000.0, formats, error) == nullptr);
             expectEquals (error, juce::String ("Can't read this file"));
+        }
+
+        beginTest ("Format labels flag lossy files with their bitrate");
+        {
+            const auto wav = folder.getChildFile ("format source.wav");
+            test::writeWav (wav, test::sine (-18.0f, 4.0, 44100.0), 44100.0);
+            expectEquals (describeFileFormat (wav), juce::String ("WAV"));
+            expectEquals (describeFileFormat (folder.getChildFile ("no extension")), juce::String());
+
+            auto encode = [&] (const juce::String& name, juce::StringArray codec)
+            {
+                const auto output = folder.getChildFile (name);
+                juce::ChildProcess encoder;
+                juce::StringArray command { "/usr/bin/afconvert", "-f", "m4af" };
+                command.addArray (codec);
+                command.add (wav.getFullPathName());
+                command.add (output.getFullPathName());
+                expect (encoder.start (command) && encoder.waitForProcessToFinish (30000) && output.existsAsFile(), "afconvert failed");
+                return output;
+            };
+            expectEquals (describeFileFormat (encode ("lossy.m4a", { "-d", "aac", "-b", "128000", "-s", "0" })),
+                          juce::String (juce::CharPointer_UTF8 ("M4A \xc2\xb7 128 kbps")));
+            expectEquals (describeFileFormat (encode ("lossless.m4a", { "-d", "alac" })), juce::String ("M4A"));
         }
 
         beginTest ("AAC files decode");

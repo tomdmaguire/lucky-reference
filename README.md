@@ -11,6 +11,7 @@ A sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven). Work in 
 - **One A/B switch** in the middle, with a short crossfade. Press ← for your mix, → for the reference and 1/2/3 to choose a slot. It's also the first plugin parameter, so in Ableton you can add it to the device panel (Configure) and MIDI- or key-map it.
 - **Loudness matching**: the reference is turned to your mix's BS.1770 loudness, measured over the last 10 seconds you've played and the reference's loop. The readout says how your mix compares ("3.4 dB quieter") with both LUFS values; turn LEVEL MATCH off to hear the real gap.
 - **Radar ripples**, borrowed from Lucky Seven's map: each hit in what you're hearing sends a faint circle out from the switch, in the mix or reference colour.
+- **Format badge** next to each reference's name, with the bitrate for lossy files ("MP3 · 192 kbps"), so you know when you're comparing against a lower-quality file.
 - **Keyboard**: left/right arrows switch between mix and reference, 1/2/3 pick a reference; the keys are shown under the switch.
 - **Window size** from 75% to 200%: drag the corner or pick a size from the **⋯** menu.
 - **Follows your transport**: references play when your DAW plays, and every reference restarts at its loop start when you press play.

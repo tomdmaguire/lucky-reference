@@ -45,6 +45,7 @@ set(LUCKY_REFERENCE_CORE_SOURCES
     Source/dsp/LoudnessMeter.cpp
     Source/ref/ReferenceTrack.cpp
     Source/ref/Resampler.cpp
+    Source/ref/FileFormat.cpp
     Source/ref/ReferenceLoader.cpp
     Source/dsp/ReferencePlayer.cpp
     Source/dsp/ReferenceEngine.cpp

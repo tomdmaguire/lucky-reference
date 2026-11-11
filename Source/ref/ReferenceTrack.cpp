@@ -1,4 +1,5 @@
 #include "ReferenceTrack.h"
+#include "FileFormat.h"
 #include "Resampler.h"
 #include <limits>
 #include "dsp/LoudnessMeter.h"
@@ -50,7 +51,7 @@ std::shared_ptr<const ReferenceTrack> ReferenceTrack::load (const juce::File& fi
 }
 
 ReferenceTrack::ReferenceTrack (juce::File source, juce::AudioBuffer<float> stereoAudio, double sampleRate)
-    : file (std::move (source)), audio (toStereo (std::move (stereoAudio))), rate (sampleRate)
+    : file (std::move (source)), format (describeFileFormat (file)), audio (toStereo (std::move (stereoAudio))), rate (sampleRate)
 {
     overview.assign (overviewBuckets, 0.0f);
     const auto length = audio.getNumSamples();

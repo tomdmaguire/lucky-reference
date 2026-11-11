@@ -24,6 +24,8 @@ public:
 
     const juce::File& getFile() const noexcept { return file; }
     juce::String getName() const { return file.getFileNameWithoutExtension(); }
+    /** The file format, with the bitrate for lossy files ("MP3 · 128 kbps"), read when the track was built. */
+    const juce::String& getFormat() const noexcept { return format; }
     const juce::AudioBuffer<float>& getAudio() const noexcept { return audio; }
     double getSampleRate() const noexcept { return rate; }
     juce::int64 getLength() const noexcept { return audio.getNumSamples(); }
@@ -43,6 +45,7 @@ public:
 
 private:
     juce::File file;
+    juce::String format;
     juce::AudioBuffer<float> audio;
     double rate;
     std::vector<float> overview;
