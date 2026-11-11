@@ -145,11 +145,12 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 
 - Performance testing as done for Lucky Seven: CPU per instance, small buffer sizes, memory use with three long references.
 
-## Open questions
+## Decisions
 
-1. **Audition while stopped:** should a reference play when the host transport is stopped, so you can preview loops without starting the DAW?
-2. **Parallel playback:** v1 has all references running with the transport. The alternative is that a reference only advances while you are listening to it, so you always resume where you left off. Parallel matches the old soloing routine.
-3. **Plugin codes:** manufacturer and plugin codes for the VST3, and whether to share Lucky Seven's manufacturer code.
+1. **No audition while the transport is stopped** in v1.
+2. **References run in parallel** with the transport, like tracks in a session.
+3. **Codes:** manufacturer `Lcky` (shared with Lucky Seven), plugin `Lref`, bundle id `com.luckylabs.luckyreference`.
+4. **Empty selected slot:** switching to it outputs silence, and the readout says the slot is empty.
 
 ## Tests
 
