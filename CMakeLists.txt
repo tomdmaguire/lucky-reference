@@ -44,6 +44,7 @@ juce_add_binary_data(LuckyReferenceFonts
 set(LUCKY_REFERENCE_CORE_SOURCES
     Source/dsp/LoudnessMeter.cpp
     Source/ref/ReferenceTrack.cpp
+    Source/ref/Resampler.cpp
     Source/ref/ReferenceLoader.cpp
     Source/dsp/ReferencePlayer.cpp
     Source/dsp/ReferenceEngine.cpp
@@ -100,6 +101,7 @@ target_link_libraries(LuckyReferenceTests
         juce::juce_audio_formats
         juce::juce_dsp
         juce::juce_data_structures
+        "-framework AudioToolbox"
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
@@ -118,3 +120,11 @@ add_executable(LuckyReferenceSnapshot tools/Snapshot.cpp)
 target_include_directories(LuckyReferenceSnapshot PRIVATE Source $<TARGET_PROPERTY:LuckyReference,INCLUDE_DIRECTORIES>)
 target_compile_definitions(LuckyReferenceSnapshot PRIVATE $<TARGET_PROPERTY:LuckyReference,COMPILE_DEFINITIONS>)
 target_link_libraries(LuckyReferenceSnapshot PRIVATE LuckyReference)
+
+juce_add_console_app(LuckyReferenceLoadBenchmark PRODUCT_NAME "Lucky Reference Load Benchmark")
+target_sources(LuckyReferenceLoadBenchmark PRIVATE tools/LoadBenchmark.cpp ${LUCKY_REFERENCE_CORE_SOURCES})
+target_include_directories(LuckyReferenceLoadBenchmark PRIVATE Source)
+target_compile_definitions(LuckyReferenceLoadBenchmark PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(LuckyReferenceLoadBenchmark
+    PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
+    PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)

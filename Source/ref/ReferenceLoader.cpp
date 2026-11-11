@@ -6,7 +6,7 @@ namespace lucky
 ReferenceLoader::ReferenceLoader() : juce::Thread ("Lucky Reference loader")
 {
     formats.registerBasicFormats();
-    startThread (juce::Thread::Priority::background);
+    startThread (juce::Thread::Priority::normal);
 }
 
 ReferenceLoader::~ReferenceLoader()

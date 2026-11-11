@@ -1,4 +1,5 @@
 #include "ReferenceTrack.h"
+#include "Resampler.h"
 #include "dsp/LoudnessMeter.h"
 
 namespace lucky
@@ -6,34 +7,6 @@ namespace lucky
 
 namespace
 {
-juce::AudioBuffer<float> resample (const juce::AudioBuffer<float>& source, double sourceRate, double targetRate)
-{
-    if (std::abs (sourceRate - targetRate) < 0.5)
-        return source;
-
-    const auto ratio = sourceRate / targetRate;
-    const auto latency = static_cast<int> (juce::WindowedSincInterpolator::getBaseLatency());
-    const auto outputLength = static_cast<int> (std::ceil (source.getNumSamples() / ratio));
-    const auto skip = static_cast<int> (std::round (latency / ratio));
-    const auto padded = source.getNumSamples() + latency * 2 + 8;
-
-    juce::AudioBuffer<float> input (2, padded);
-    input.clear();
-    juce::AudioBuffer<float> output (2, outputLength + skip);
-
-    for (int ch = 0; ch < 2; ++ch)
-    {
-        input.copyFrom (ch, 0, source, ch, 0, source.getNumSamples());
-        juce::WindowedSincInterpolator interpolator;
-        interpolator.process (ratio, input.getReadPointer (ch), output.getWritePointer (ch), output.getNumSamples());
-    }
-
-    juce::AudioBuffer<float> aligned (2, outputLength);
-    for (int ch = 0; ch < 2; ++ch)
-        aligned.copyFrom (ch, 0, output, ch, skip, outputLength);
-    return aligned;
-}
-
 juce::AudioBuffer<float> toStereo (juce::AudioBuffer<float> audio)
 {
     if (audio.getNumChannels() == 2)
@@ -72,7 +45,7 @@ std::shared_ptr<const ReferenceTrack> ReferenceTrack::load (const juce::File& fi
         return nullptr;
     }
 
-    return std::make_shared<const ReferenceTrack> (file, resample (toStereo (std::move (decoded)), reader->sampleRate, sampleRate), sampleRate);
+    return std::make_shared<const ReferenceTrack> (file, resampleStereo (toStereo (std::move (decoded)), reader->sampleRate, sampleRate), sampleRate);
 }
 
 ReferenceTrack::ReferenceTrack (juce::File source, juce::AudioBuffer<float> stereoAudio, double sampleRate)
