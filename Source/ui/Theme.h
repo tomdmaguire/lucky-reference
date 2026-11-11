@@ -26,6 +26,28 @@ inline juce::Colour slotColour (int slot)
     return colours[static_cast<size_t> (juce::jlimit (0, 2, slot))];
 }
 
+/** Heart outline fitted to the given bounds, as in Lucky Seven's favourites. */
+inline juce::Path heartPath (juce::Rectangle<float> r)
+{
+    const auto x = r.getX(), y = r.getY(), w = r.getWidth(), h = r.getHeight();
+    juce::Path path;
+    path.startNewSubPath (x + w * 0.5f, y + h * 0.95f);
+    path.cubicTo (x - w * 0.1f, y + h * 0.5f, x + w * 0.1f, y - h * 0.1f, x + w * 0.5f, y + h * 0.25f);
+    path.cubicTo (x + w * 0.9f, y - h * 0.1f, x + w * 1.1f, y + h * 0.5f, x + w * 0.5f, y + h * 0.95f);
+    path.closeSubPath();
+    return path;
+}
+
+/** Draws a file-format badge ("WAV", "MP3 · 128 kbps") as an outlined tag. */
+inline void paintFormatBadge (juce::Graphics& g, const juce::String& format, juce::Rectangle<float> tag)
+{
+    g.setColour (outline.brighter (0.3f));
+    g.drawRoundedRectangle (tag.reduced (0.5f), 3.0f, 1.0f);
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (10.0f).withStyle ("Bold").withKerningFactor (0.08f));
+    g.drawText (format, tag, juce::Justification::centred);
+}
+
 /** Small uppercase label font used across the UI. */
 inline juce::FontOptions labelFont (float height = 11.0f)
 {

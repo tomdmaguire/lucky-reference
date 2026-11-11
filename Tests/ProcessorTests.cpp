@@ -176,6 +176,30 @@ public:
             expectEquals (parameters.getRawParameterValue (LuckyReferenceProcessor::matchId)->load(), 0.0f);
         }
 
+        beginTest ("Adding a reference to the library keeps playing it and remembers the library copy");
+        {
+            auto processor = makeProcessor();
+            processor->loadFile (1, referenceFile);
+            expect (pumpUntil ([&] { return processor->getTrack (1) != nullptr; }));
+            processor->setLoop (1, { 1.5, 6.0 });
+            const auto track = processor->getTrack (1);
+
+            const auto copy = processor->getLibrary().importFile (referenceFile);
+            expect (processor->getLibrary().contains (copy));
+            processor->relinkFile (1, copy);
+            expectEquals (processor->getFile (1).getFullPathName(), copy.getFullPathName());
+            expect (processor->getTrack (1) == track, "the decoded audio is kept, not reloaded");
+            expectWithinAbsoluteError (processor->getLoop (1).startSeconds, 1.5, 1.0e-9);
+
+            juce::MemoryBlock state;
+            processor->getStateInformation (state);
+            auto restored = makeProcessor();
+            restored->setStateInformation (state.getData(), static_cast<int> (state.getSize()));
+            expect (pumpUntil ([&] { return restored->getTrack (1) != nullptr; }));
+            expectEquals (restored->getFile (1).getFullPathName(), copy.getFullPathName());
+            expectWithinAbsoluteError (restored->getLoop (1).endSeconds, 6.0, 1.0e-9);
+        }
+
         beginTest ("A missing file keeps its path and reports the problem");
         {
             auto processor = makeProcessor();
@@ -192,6 +216,10 @@ static ProcessorTests processorTests;
 
 int main()
 {
+    const auto sandbox = lucky::test::scratchFolder ("ProcessorLibrary");
+    setenv ("LUCKY_REFERENCE_LIBRARY", sandbox.getChildFile ("References").getFullPathName().toRawUTF8(), 1);
+    setenv ("LUCKY_REFERENCE_STATE", sandbox.getChildFile ("State").getFullPathName().toRawUTF8(), 1);
+
     juce::ScopedJuceInitialiser_GUI juce;
     juce::UnitTestRunner runner;
     runner.setAssertOnFailure (false);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A reference library in `~/Music/Lucky Reference/References`: open it with the LIBRARY button or by clicking an empty slot, search by name or folder, heart your favourites, and load with a double-click or Return. Subfolders are included.
+- ADD TO LIBRARY on a reference loaded from elsewhere copies it into the library and keeps the slot playing.
 - Closing the plug-in window switches back to your mix, so a reference never keeps playing out of sight. Switching from the DAW with the window closed still works.
 
 ## v0.1.0

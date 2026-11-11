@@ -80,7 +80,7 @@ void ReferenceLibrary::rescan()
         entry.file = file;
         entry.key = file.getRelativePathFrom (root).replaceCharacter ('\\', '/');
         entry.name = file.getFileNameWithoutExtension();
-        entry.folder = entry.key.upToLastOccurrenceOf ("/", false, false);
+        entry.folder = entry.key.containsChar ('/') ? entry.key.upToLastOccurrenceOf ("/", false, false) : juce::String();
         scanned.push_back (std::move (entry));
     }
 

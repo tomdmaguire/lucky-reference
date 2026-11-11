@@ -28,13 +28,14 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 
 ### 1. Reference slots
 
-- Three slots. Drag a file onto a slot, or click an empty slot to browse.
+- Three slots. Drag a file onto a slot, click an empty slot to choose from the reference library, or browse for a file from the library panel or the slot's menu.
 - Formats: WAV, AIFF, FLAC, MP3, M4A/AAC (CoreAudio decoders on macOS).
 - Files are decoded on a background thread, resampled to the host rate, and held in memory as stereo. Mono files are duplicated to both channels; files with more than two channels use the first two.
 - Maximum length: 15 minutes.
 - Each slot has a colour from the Lucky family palette: slot 1 is Lucky Seven's gold, slot 2 pink, slot 3 green.
-- Browsing for a reference starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
-- References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
+- Browsing for a file starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
+- References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. Keeping references in the library gives them a stable home (see Reference library). A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
+- Closing the plugin window switches back to the mix, so a reference never keeps playing out of sight. Switching from the host with the window closed still works.
 - Slots can be cleared and replaced.
 
 ### 2. Source switch (A/B)
@@ -95,12 +96,25 @@ Measure: **ITU-R BS.1770 gated integrated loudness** (LUFS), the same measure on
 
 Saved with the project: file paths, the loop for each slot, and the `reference`, `slot` and `match` parameters. Reference audio is not embedded; it is reloaded from disk.
 
+### 9. Reference library
+
+- One folder, `~/Music/Lucky Reference/References`, created if missing. Subfolders are included and shown as a quiet label next to each track, so you can organise by genre or project.
+- Shared by every instance. A rescan lists the folder (when the library opens, then every 5 s while it is open), and a low-priority thread reads each new or changed file's format and length once. The results are cached in `~/Library/Application Support/Lucky Reference/library-cache.json`, keyed by path, size and modification date.
+- **Library panel:** opens over the slot rows from the LIBRARY button in the top bar, by clicking an empty slot, or from a slot's menu. The stage stays live, so you can keep switching while you browse.
+  - Search box: every word must appear in the track name or its folder. Up and down move through the results without leaving the box, Return loads the highlighted track, and Escape clears the search, then closes the panel.
+  - Each row: heart, name, folder, a marker in the slot's colour if the track is already loaded, format badge and length.
+  - Favourites (hearts) sort first and are kept in `favourites.json` next to the cache, so clearing the cache never loses them.
+  - Double-click, Return or a file dropped on the panel loads into the selected slot, shown in the header as "LOADS INTO REF n". BROWSE FILES... opens a file browser instead.
+  - When the library is empty, the panel says where to put tracks and offers SHOW IN FINDER.
+- **Add to library:** a reference loaded from outside the library shows a small ADD TO LIBRARY button on its slot (also in the slot's menu). It copies the file into the top of the library on a background thread and points the slot at the copy, keeping the audio and loop as they are. Nothing is ever copied without asking. A file with the same name and size already in the library is reused; a different file with the same name gets a number.
+- The three-dot menu has "Show library in Finder".
+
 ## UI
 
 ```
-┌──────────────┬───────────────────────────────────────┬───┐
-│ [Ab] LUCKY REFERENCE                                  │ ⋯ │
-├──────────────┴───────────────────────────────────────┴───┤
+┌──────────────┬─────────────────────────────┬─────────┬───┐
+│ [Ab] LUCKY REFERENCE                         │ LIBRARY │ ⋯ │
+├──────────────┴─────────────────────────────┴─────────┴───┤
 │ ┌ 1 ▁▃▅▇▆▅▃▂[▅▇█▇▆▅]▃▂▁▂▃▅▆▅▃▂▁   Artist – Track  16 s ┐ │
 │ ┌ 2 ▁▂▃▅▆▇▆▅▄▃▂▁▂▃[▅▆▇▇▆]▅▃▂▁     Artist – Track        ┐ │
 │ ┌ 3        drop a reference here                        ┐ │
@@ -112,7 +126,7 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators and the three-dot menu (window size, placement hints, remove all references).
+- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the LIBRARY button and the three-dot menu (window size, placement hints, show library in Finder, remove all references).
 - Three outlined slot rows (100 px at 100% scale): waveform with coloured loop region and playhead, file name, a format badge, loop length.
 - The format badge makes a lossy reference obvious: "MP3 · 192 kbps" (bitrate from the file header) for MP3, AAC, Ogg and Opus, and lossy M4A; just "WAV", "AIFF", "FLAC" or lossless "M4A" (ALAC) otherwise. A lossy file has a softer top end, which is worth knowing before matching your mix to it.
 - The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout headline, the switch and LEVEL MATCH share one centre line.
@@ -149,7 +163,7 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 ## Later
 
 - A shared Lucky UI library for both plugins: theme, look and feel, seven-segment glyphs, menu icon and the scaling editor are currently copied from Lucky Seven.
-- A personal reference library: copy loaded references into a folder such as `~/Music/Lucky Reference/References` (as emit does) and offer the ones you like for quick loading. This would also let references travel with a project.
+- Suggest references from the library whose tonal balance and dynamics are closest to the mix (planned for v0.2).
 
 ## Performance (measured)
 
@@ -174,3 +188,6 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 - Loop and source crossfades produce no discontinuities above a set threshold.
 - State saves and restores slots, loops, and the `reference`, `slot` and `match` parameters.
 - Toggling `reference` from the host with the editor closed switches the output.
+- Closing the editor switches back to the mix.
+- The library finds tracks in subfolders, reuses cached details and re-reads changed files, drops deleted files, keeps favourites first across restarts, matches searches on every word, and imports a file once (numbering a different file with the same name).
+- Adding a reference to the library keeps its audio and loop and saves the library copy's path with the session.

@@ -133,6 +133,12 @@ void LuckyReferenceProcessor::switchToMix()
         parameters.getParameter (referenceId)->setValueNotifyingHost (0.0f);
 }
 
+void LuckyReferenceProcessor::relinkFile (int index, const juce::File& file)
+{
+    slotState (index).setProperty (pathProperty, file.getFullPathName(), nullptr);
+    sendChangeMessage();
+}
+
 void LuckyReferenceProcessor::clearSlot (int index)
 {
     loadFile (index, {});

@@ -63,6 +63,7 @@ public:
             expectEquals (charlie->format, juce::String ("WAV"));
             expectWithinAbsoluteError (charlie->seconds, 3.0, 0.01);
             expect (library.contains (charlie->file));
+            expectEquals (findEntry (entries, "alpha.wav")->folder, juce::String(), "top-level tracks have no folder");
             expect (! library.contains (folder.getChildFile ("elsewhere.wav")));
         }
 

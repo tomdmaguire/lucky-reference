@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsp/ReferenceEngine.h"
+#include "library/ReferenceLibrary.h"
 #include "ref/ReferenceLoader.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -54,6 +55,13 @@ public:
     /** Flips the A/B switch to the mix, as when the window closes, so a reference never keeps playing out of sight. */
     void switchToMix();
 
+    /** Points a slot at another copy of the same audio (e.g. its copy in the library) without reloading it or
+        touching its loop. */
+    void relinkFile (int slot, const juce::File& file);
+
+    /** The reference library shared by every instance. */
+    lucky::ReferenceLibrary& getLibrary() noexcept { return *library; }
+
     /** Empties a slot. */
     void clearSlot (int slot);
 
@@ -91,6 +99,7 @@ private:
     double loadingRate() const noexcept { return preparedRate > 0.0 ? preparedRate : 48000.0; }
 
     juce::AudioProcessorValueTreeState parameters;
+    juce::SharedResourcePointer<lucky::ReferenceLibrary> library;
     lucky::ReferenceLoader loader;
     lucky::ReferenceEngine engine;
     std::array<lucky::ReferenceTrackPtr, numSlots> tracks;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "ui/LibraryPanel.h"
 #include "ui/LookAndFeel.h"
 #include "ui/RadarRipples.h"
 #include "ui/Settings.h"
@@ -24,6 +25,12 @@ public:
 
     /** The editor's current scale, for ticking the Window size menu. */
     std::function<float()> getScale;
+
+    /** Shows the library over the slots, loading into the selected slot. */
+    void openLibrary();
+
+    /** Hides the library and returns to the slots. */
+    void closeLibrary();
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -50,6 +57,8 @@ private:
         std::function<void (juce::Graphics&)> onPaint;
     };
 
+    lucky::LibraryPanel libraryPanel;
+    juce::TextButton libraryButton { "LIBRARY" };
     lucky::RadarRipples radar;
     PaintLayer readout;
     lucky::SourceSwitch sourceSwitch;
@@ -77,6 +86,9 @@ public:
     ~LuckyReferenceEditor() override;
 
     void resized() override;
+
+    /** Opens the library panel, as the LIBRARY button does. */
+    void showLibrary() { view.openLibrary(); }
 
 private:
     float currentScale() const;

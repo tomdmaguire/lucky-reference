@@ -57,6 +57,7 @@ target_sources(LuckyReference PRIVATE
     Source/PluginEditor.cpp
     Source/ui/LookAndFeel.cpp
     Source/ui/SlotRow.cpp
+    Source/ui/LibraryPanel.cpp
     Source/ui/SourceSwitch.cpp
     Source/ui/RadarRipples.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}

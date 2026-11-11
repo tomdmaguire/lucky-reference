@@ -104,6 +104,8 @@ void LuckyLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& bu
 juce::Font LuckyLookAndFeel::getTextButtonFont (juce::TextButton& button, int)
 {
     const auto& properties = button.getProperties();
+    if (properties["round"])
+        return theme::labelFont (20.0f);
     return theme::labelFont (properties["small"] || properties["outline"] ? 11.0f : 13.0f);
 }
 

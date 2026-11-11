@@ -1,3 +1,4 @@
+#include "PluginEditor.h"
 #include "PluginProcessor.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <cstdlib>
@@ -65,6 +66,43 @@ void writeWav (const juce::File& file, const juce::AudioBuffer<float>& buffer)
         writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
 }
 
+/** The snapshot's own library and state folders, so a snapshot never touches the real library. */
+juce::File snapshotFolder (const juce::String& name)
+{
+    return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("LuckyReferenceSnapshot").getChildFile (name);
+}
+
+/** Writes a quiet FLAC of the given length, so library rows show realistic durations without large files. */
+void writeQuietFlac (const juce::File& file, double seconds)
+{
+    file.getParentDirectory().createDirectory();
+    file.deleteFile();
+    juce::FlacAudioFormat format;
+    std::unique_ptr<juce::OutputStream> stream = file.createOutputStream();
+    const auto options = juce::AudioFormatWriterOptions().withSampleRate (44100.0).withNumChannels (2).withBitsPerSample (16);
+    if (auto writer = format.createWriterFor (stream, options))
+    {
+        juce::AudioBuffer<float> block (2, 44100);
+        block.clear();
+        for (auto written = 0.0; written < seconds; written += 1.0)
+            writer->writeFromAudioSampleBuffer (block, 0, block.getNumSamples());
+    }
+}
+
+/** Fills the library with made-up tracks in a couple of folders, two of them favourites. */
+void fillLibrary (const juce::File& library, const juce::File& state)
+{
+    const std::pair<const char*, double> tracks[] { { "Club/Low Tide (Extended)", 412.0 }, { "Club/Satellite Hearts", 236.0 },
+                                                    { "Club/Copper Sun", 301.0 }, { "Indie/Paper Planes at Dawn", 198.0 },
+                                                    { "Indie/Harbour Lights", 254.0 }, { "Concrete Garden", 221.0 },
+                                                    { "Velvet Static", 263.0 } };
+    for (const auto& [path, seconds] : tracks)
+        writeQuietFlac (library.getChildFile (juce::String (path) + ".flac"), seconds);
+
+    state.createDirectory();
+    state.getChildFile ("favourites.json").replaceWithText (R"(["Glass Houses (Club Mix).wav", "Club/Satellite Hearts.flac"])");
+}
+
 void setParameter (LuckyReferenceProcessor& processor, const juce::String& id, float value)
 {
     auto* parameter = processor.getParameters().getParameter (id);
@@ -94,7 +132,8 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
 }
 
 /** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
-    leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture). */
+    leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
+    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -103,9 +142,9 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
     PlayingHead head;
     processor->setPlayHead (&head);
 
-    if (mode != "empty")
+    if (mode != "empty" && mode != "library-empty")
     {
-        const auto folder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("LuckyReferenceSnapshot");
+        const auto folder = mode == "outside" ? snapshotFolder ("Elsewhere") : snapshotFolder ("Library");
         folder.createDirectory();
         const juce::File files[] { folder.getChildFile ("Midnight Drive - Master.wav"), folder.getChildFile ("Glass Houses (Club Mix).wav"),
                                    folder.getChildFile ("Northern Lights.wav") };
@@ -155,6 +194,15 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
             pumpMessages (0.35);
         }
     }
+    if (mode.startsWith ("library"))
+    {
+        setParameter (*processor, LuckyReferenceProcessor::slotId, 1.0f);
+        dynamic_cast<LuckyReferenceEditor&> (*editor).showLibrary();
+        for (int attempt = 0; attempt < 300 && processor->getLibrary().isReading(); ++attempt)
+            pumpMessages (0.02);
+        pumpMessages (0.3);
+    }
+
     if (mode == "playing")
     {
         const auto mix = fakeSong ({ -3 }, 6.0, 4);
@@ -175,11 +223,20 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
 
 int main (int argc, char** argv)
 {
-    juce::ScopedJuceInitialiser_GUI juce;
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|outside> [settleSeconds]\n";
         return 1;
     }
+
+    const auto library = snapshotFolder ("Library"), state = snapshotFolder ("State");
+    snapshotFolder ({}).deleteRecursively();
+    library.createDirectory();
+    if (juce::String (argv[2]) == "library")
+        fillLibrary (library, state);
+    setenv ("LUCKY_REFERENCE_LIBRARY", library.getFullPathName().toRawUTF8(), 1);
+    setenv ("LUCKY_REFERENCE_STATE", state.getFullPathName().toRawUTF8(), 1);
+
+    juce::ScopedJuceInitialiser_GUI juce;
     return snapshot (juce::File (juce::String (argv[1])), juce::String (argv[2]), argc > 3 ? std::atof (argv[3]) : 0.6);
 }

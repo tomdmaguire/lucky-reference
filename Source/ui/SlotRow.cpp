@@ -95,7 +95,7 @@ void SlotRow::paint (juce::Graphics& g)
     const auto file = processor.getFile (slot);
     if (track == nullptr)
     {
-        juce::String message = "Drop a reference here, or click to browse";
+        juce::String message = "Drop a reference here, or click to choose from your library";
         if (processor.isLoading (slot))
             message = "Loading " + file.getFileName() + "...";
         else if (processor.getError (slot).isNotEmpty())
@@ -165,19 +165,34 @@ void SlotRow::paint (juce::Graphics& g)
 
     const auto nameFont = g.getCurrentFont();
     auto nameArea = label.withTrimmedRight (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), lengthText) + 24.0f);
+
+    addButtonArea = {};
+    if (canAddToLibrary())
+    {
+        const auto text = adding ? juce::String ("ADDING...") : juce::String ("+ ADD TO LIBRARY");
+        const auto font = theme::labelFont (10.0f).withStyle ("Bold");
+        const auto width = juce::GlyphArrangement::getStringWidth (font, text) + 16.0f;
+        addButtonArea = nameArea.removeFromRight (width).withSizeKeepingCentre (width, 18.0f);
+        nameArea.removeFromRight (12.0f);
+        const auto hot = addHover && ! adding;
+        g.setColour (hot ? colour.withAlpha (0.16f) : juce::Colours::transparentBlack);
+        g.fillRoundedRectangle (addButtonArea, 9.0f);
+        g.setColour (hot ? colour.withAlpha (0.9f) : theme::outline.brighter (0.3f));
+        g.drawRoundedRectangle (addButtonArea.reduced (0.5f), 9.0f, 1.0f);
+        g.setColour (hot ? theme::text : theme::textDim);
+        g.setFont (font);
+        g.drawText (text, addButtonArea, juce::Justification::centred);
+        g.setFont (nameFont);
+    }
+
     const auto& format = track->getFormat();
     if (format.isNotEmpty())
     {
-        const auto formatFont = theme::labelFont (10.0f).withStyle ("Bold");
-        const auto formatWidth = juce::GlyphArrangement::getStringWidth (formatFont, format) + 12.0f;
-        const auto nameWidth = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), track->getName());
+        const auto formatWidth = juce::GlyphArrangement::getStringWidth (theme::labelFont (10.0f).withStyle ("Bold"), format) + 12.0f;
+        const auto nameWidth = juce::GlyphArrangement::getStringWidth (nameFont, track->getName());
         const auto tagX = std::min (nameArea.getX() + nameWidth + 10.0f, nameArea.getRight() - formatWidth);
         const auto tag = juce::Rectangle<float> (tagX, label.getCentreY() - 8.0f, formatWidth, 16.0f);
-        g.setColour (theme::outline.brighter (0.3f));
-        g.drawRoundedRectangle (tag.reduced (0.5f), 3.0f, 1.0f);
-        g.setColour (theme::textDim);
-        g.setFont (formatFont);
-        g.drawText (format, tag, juce::Justification::centred);
+        theme::paintFormatBadge (g, format, tag);
         g.setFont (nameFont);
         nameArea.setRight (tag.getX() - 10.0f);
     }
@@ -188,8 +203,23 @@ void SlotRow::paint (juce::Graphics& g)
 
 void SlotRow::mouseMove (const juce::MouseEvent& event)
 {
-    const auto overEdge = processor.getTrack (slot) != nullptr && edgeAt (event.position.x) != Drag::none;
+    const auto overAdd = addButtonArea.contains (event.position);
+    if (overAdd != addHover)
+    {
+        addHover = overAdd;
+        repaint();
+    }
+    const auto overEdge = ! overAdd && processor.getTrack (slot) != nullptr && edgeAt (event.position.x) != Drag::none;
     setMouseCursor (overEdge ? juce::MouseCursor::LeftRightResizeCursor : juce::MouseCursor::PointingHandCursor);
+}
+
+void SlotRow::mouseExit (const juce::MouseEvent&)
+{
+    if (addHover)
+    {
+        addHover = false;
+        repaint();
+    }
 }
 
 void SlotRow::mouseDown (const juce::MouseEvent& event)
@@ -205,8 +235,19 @@ void SlotRow::mouseDown (const juce::MouseEvent& event)
 
     if (processor.getTrack (slot) == nullptr)
     {
-        if (! processor.isLoading (slot))
+        if (processor.isLoading (slot))
+            return;
+        if (processor.getError (slot).isNotEmpty() || onOpenLibrary == nullptr)
             browse();
+        else
+            onOpenLibrary();
+        return;
+    }
+
+    if (addButtonArea.contains (event.position))
+    {
+        drag = Drag::blocked;
+        addToLibrary();
         return;
     }
 
@@ -216,7 +257,7 @@ void SlotRow::mouseDown (const juce::MouseEvent& event)
 
 void SlotRow::mouseDrag (const juce::MouseEvent& event)
 {
-    if (processor.getTrack (slot) == nullptr || event.mods.isPopupMenu())
+    if (processor.getTrack (slot) == nullptr || event.mods.isPopupMenu() || drag == Drag::blocked)
         return;
 
     const auto seconds = secondsAt (event.position.x);
@@ -237,6 +278,8 @@ void SlotRow::mouseDrag (const juce::MouseEvent& event)
         case Drag::endEdge:
             loop.endSeconds = std::max (seconds, loop.startSeconds + LoopRegion::minimumSeconds);
             break;
+        case Drag::blocked:
+            return;
     }
 
     loop.startSeconds = std::max (0.0, loop.startSeconds);
@@ -248,6 +291,11 @@ void SlotRow::mouseUp (const juce::MouseEvent& event)
 {
     if (processor.getTrack (slot) == nullptr || event.mods.isPopupMenu())
         return;
+    if (drag == Drag::blocked)
+    {
+        drag = Drag::none;
+        return;
+    }
 
     if (draft)
     {
@@ -273,11 +321,44 @@ void SlotRow::showMenu()
 {
     juce::PopupMenu menu;
     const auto hasFile = processor.getFile (slot) != juce::File();
-    menu.addItem (hasFile ? "Replace reference..." : "Choose a reference...", [this] { browse(); });
+    menu.addItem ("Choose from library...", onOpenLibrary != nullptr, false, [this] { if (onOpenLibrary) onOpenLibrary(); });
+    menu.addItem (hasFile ? "Replace with a file..." : "Choose a file...", [this] { browse(); });
+    menu.addItem ("Add to library", canAddToLibrary() && ! adding, false, [this] { addToLibrary(); });
     menu.addItem ("Clear loop", processor.getLoop (slot).isSet(), false, [this] { processor.setLoop (slot, {}); });
     menu.addSeparator();
     menu.addItem ("Remove reference", hasFile, false, [this] { processor.clearSlot (slot); });
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this));
+}
+
+bool SlotRow::canAddToLibrary() const
+{
+    const auto file = processor.getFile (slot);
+    return processor.getTrack (slot) != nullptr && file.existsAsFile() && ! processor.getLibrary().contains (file);
+}
+
+void SlotRow::addToLibrary()
+{
+    if (adding || ! canAddToLibrary())
+        return;
+
+    adding = true;
+    repaint();
+    const auto source = processor.getFile (slot);
+    juce::Thread::launch ([library = juce::SharedResourcePointer<ReferenceLibrary>(), source, row = juce::Component::SafePointer<SlotRow> (this)]() mutable
+    {
+        const auto copy = library->importFile (source);
+        juce::MessageManager::callAsync ([library, source, copy, row]
+        {
+            if (copy.existsAsFile())
+                library->rescan();
+            if (row == nullptr)
+                return;
+            row->adding = false;
+            if (copy.existsAsFile() && row->processor.getFile (row->slot) == source)
+                row->processor.relinkFile (row->slot, copy);
+            row->repaint();
+        });
+    });
 }
 
 juce::File SlotRow::browseStartFolder() const
