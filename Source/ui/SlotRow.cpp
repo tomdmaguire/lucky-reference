@@ -15,6 +15,12 @@ SlotRow::SlotRow (LuckyReferenceProcessor& owner, int index) : processor (owner)
 {
     setWantsKeyboardFocus (false);
     setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    processor.getLibrary().addChangeListener (this);
+}
+
+SlotRow::~SlotRow()
+{
+    processor.getLibrary().removeChangeListener (this);
 }
 
 void SlotRow::setState (bool isSelected, bool isAudible)
@@ -342,23 +348,29 @@ void SlotRow::addToLibrary()
         return;
 
     adding = true;
+    importing = processor.getFile (slot);
     repaint();
-    const auto source = processor.getFile (slot);
-    juce::Thread::launch ([library = juce::SharedResourcePointer<ReferenceLibrary>(), source, row = juce::Component::SafePointer<SlotRow> (this)]() mutable
+    processor.getLibrary().importFileAsync (importing);
+}
+
+void SlotRow::changeListenerCallback (juce::ChangeBroadcaster*)
+{
+    if (! adding)
+        return;
+
+    auto& library = processor.getLibrary();
+    const auto copy = library.takeImportResult (importing);
+    if (! copy)
+        return;
+
+    adding = false;
+    if (copy->existsAsFile())
     {
-        const auto copy = library->importFile (source);
-        juce::MessageManager::callAsync ([library, source, copy, row]
-        {
-            if (copy.existsAsFile())
-                library->rescan();
-            if (row == nullptr)
-                return;
-            row->adding = false;
-            if (copy.existsAsFile() && row->processor.getFile (row->slot) == source)
-                row->processor.relinkFile (row->slot, copy);
-            row->repaint();
-        });
-    });
+        if (processor.getFile (slot) == importing)
+            processor.relinkFile (slot, *copy);
+        library.rescan();
+    }
+    repaint();
 }
 
 juce::File SlotRow::browseStartFolder() const

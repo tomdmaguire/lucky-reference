@@ -73,10 +73,18 @@ public:
     /** Adds the entry to favourites, or removes it. */
     void toggleFavourite (const juce::String& key);
 
-    /** Copies a file into the top of the library and returns the copy. A file with the same name and size already
-        there is reused; a different file with the same name gets a number. Safe to call from any thread; returns a
-        nonexistent file if the copy fails. */
+    /** Copies a file into the top of the library and returns the copy. A file with the same name and identical
+        contents already there is reused; a different file with the same name gets a number. Safe to call from any
+        thread; returns a nonexistent file if the copy fails. */
     juce::File importFile (const juce::File& source);
+
+    /** Imports a file on the library's own import thread (which the library waits for when it is destroyed), then
+        sends a change message; collect the copy with takeImportResult. Ignored while that file is already importing. */
+    void importFileAsync (const juce::File& source);
+
+    /** The library copy of a file whose background import has finished (a nonexistent file if it failed), or nothing
+        while it is still running or if it was never started. Each result is returned once. */
+    std::optional<juce::File> takeImportResult (const juce::File& source);
 
     /** Orders entries by how close they sound to a mix, closest first; entries without a profile go last, by name. */
     static void sortClosestFirst (std::vector<LibraryEntry>& entries, const TonalProfile& mix);
@@ -107,6 +115,9 @@ private:
     std::map<juce::String, Details> cache;
     std::set<juce::String> favourites;
     juce::CriticalSection importLock;
+    std::set<juce::String> importsRunning;
+    std::map<juce::String, juce::File> importResults;
+    juce::ThreadPool importPool { juce::ThreadPoolOptions{}.withThreadName ("Lucky Reference import").withNumberOfThreads (1) };
 };
 
 } // namespace lucky

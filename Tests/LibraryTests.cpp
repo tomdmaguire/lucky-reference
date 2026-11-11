@@ -158,6 +158,31 @@ public:
             test::writeWav (other.getChildFile ("Echo.wav"), test::sine (-12.0f, 2.0, rate), rate);
             expectEquals (library.importFile (other.getChildFile ("Echo.wav")).getFileName(), juce::String ("Echo 2.wav"));
             expect (library.importFile (folder.getChildFile ("missing.wav")) == juce::File());
+
+            const auto sameSize = folder.getChildFile ("SameSize");
+            sameSize.createDirectory();
+            test::writeWav (sameSize.getChildFile ("Echo.wav"), test::sine (-12.0f, 1.0, rate, 2, 440.0), rate);
+            expectEquals (sameSize.getChildFile ("Echo.wav").getSize(), source.getSize(), "the test needs a file of the same size");
+            expectEquals (library.importFile (sameSize.getChildFile ("Echo.wav")).getFileName(), juce::String ("Echo 3.wav"),
+                          "a different file with the same name and size is not mistaken for the copy");
+        }
+
+        beginTest ("A background import reports its copy once");
+        {
+            ReferenceLibrary library (root, state);
+            const auto source = folder.getChildFile ("Outside").getChildFile ("Foxtrot.wav");
+            test::writeWav (source, test::sine (-12.0f, 1.0, rate), rate);
+            expect (! library.takeImportResult (source).has_value());
+            library.importFileAsync (source);
+            std::optional<juce::File> copy;
+            for (int attempt = 0; attempt < 500 && ! copy; ++attempt)
+            {
+                juce::Thread::sleep (10);
+                copy = library.takeImportResult (source);
+            }
+            expect (copy.has_value() && copy->existsAsFile());
+            expectEquals (copy->getFileName(), juce::String ("Foxtrot.wav"));
+            expect (! library.takeImportResult (source).has_value(), "each result is returned once");
         }
     }
 };

@@ -75,6 +75,7 @@ ReferenceLibrary::ReferenceLibrary (const juce::File& libraryRoot, const juce::F
 
 ReferenceLibrary::~ReferenceLibrary()
 {
+    importPool.removeAllJobs (true, 30000);
     stopThread (5000);
 }
 
@@ -214,6 +215,39 @@ void ReferenceLibrary::toggleFavourite (const juce::String& key)
     sendChangeMessage();
 }
 
+void ReferenceLibrary::importFileAsync (const juce::File& source)
+{
+    const auto key = source.getFullPathName();
+    {
+        const juce::ScopedLock scope (lock);
+        if (! importsRunning.insert (key).second)
+            return;
+        importResults.erase (key);
+    }
+
+    importPool.addJob ([this, source, key]
+    {
+        const auto copy = importFile (source);
+        {
+            const juce::ScopedLock scope (lock);
+            importsRunning.erase (key);
+            importResults[key] = copy;
+        }
+        sendChangeMessage();
+    });
+}
+
+std::optional<juce::File> ReferenceLibrary::takeImportResult (const juce::File& source)
+{
+    const juce::ScopedLock scope (lock);
+    const auto it = importResults.find (source.getFullPathName());
+    if (it == importResults.end())
+        return std::nullopt;
+    const auto copy = it->second;
+    importResults.erase (it);
+    return copy;
+}
+
 juce::File ReferenceLibrary::importFile (const juce::File& source)
 {
     if (! source.existsAsFile())
@@ -226,7 +260,7 @@ juce::File ReferenceLibrary::importFile (const juce::File& source)
     auto target = root.getChildFile (source.getFileName());
     for (int number = 2; target.exists(); ++number)
     {
-        if (target.getSize() == source.getSize())
+        if (target.getSize() == source.getSize() && target.hasIdenticalContentTo (source))
             return target;
         target = root.getChildFile (source.getFileNameWithoutExtension() + " " + juce::String (number) + source.getFileExtension());
     }

@@ -66,7 +66,8 @@ private:
         float energy = 0.0f;
     };
 
-    /** Frames or blocks either side of one that make up a second of context for the gate. */
+    /** Frames or blocks either side of one that make up about a second of context for the gate (0 for one-second
+        punch windows, which are a second long already). */
     int contextRadius (int step) const;
     void analyseFrame();
     void finishPunchBlock();

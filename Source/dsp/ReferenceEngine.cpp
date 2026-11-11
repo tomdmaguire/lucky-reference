@@ -12,7 +12,6 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
 {
     sampleRate = rate;
     tapRate.store (rate);
-    mixTapFifo.reset();
     mixMeter.prepare (rate);
     lastMeasuredSeconds = 0.0;
     mixLoudness.store (silentLufs);

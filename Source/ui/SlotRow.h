@@ -10,10 +10,12 @@ namespace lucky
 
 /** One reference slot: its waveform with the loop and playhead, a drop target for files, and loop editing by dragging. */
 class SlotRow final : public juce::Component,
-                      public juce::FileDragAndDropTarget
+                      public juce::FileDragAndDropTarget,
+                      private juce::ChangeListener
 {
 public:
     SlotRow (LuckyReferenceProcessor& processor, int slot);
+    ~SlotRow() override;
 
     /** Called when the row is clicked, to make it the selected slot. */
     std::function<void()> onSelect;
@@ -58,6 +60,7 @@ private:
     /** True when the slot's file is loaded and lives outside the library, so it can be added. */
     bool canAddToLibrary() const;
     void addToLibrary();
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
 
     LuckyReferenceProcessor& processor;
     const int slot;
@@ -68,6 +71,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Rectangle<float> addButtonArea;
     bool addHover = false, adding = false;
+    juce::File importing;
     juce::SharedResourcePointer<Settings> settings;
 };
 

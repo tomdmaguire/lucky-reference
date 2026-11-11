@@ -173,7 +173,7 @@ void TonalAnalyser::finishPunchBlock()
 
 int TonalAnalyser::contextRadius (int step) const
 {
-    return std::max (1, static_cast<int> (std::round (gateContextSeconds * 0.5 * rate / step)));
+    return static_cast<int> (std::floor (gateContextSeconds * rate / step / 2.0));
 }
 
 double TonalAnalyser::getGatedSeconds() const
