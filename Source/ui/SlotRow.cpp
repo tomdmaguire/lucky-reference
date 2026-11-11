@@ -75,11 +75,8 @@ void SlotRow::paint (juce::Graphics& g)
 
     g.setColour (selected ? theme::panelRaised : theme::strip);
     g.fillRoundedRectangle (bounds, 6.0f);
-    if (selected || dropHover)
-    {
-        g.setColour (colour.withAlpha (dropHover ? 0.9f : 0.55f));
-        g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
-    }
+    g.setColour (selected || dropHover ? colour.withAlpha (dropHover ? 0.9f : 0.55f) : theme::outline);
+    g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
 
     auto badge = bounds.withWidth (badgeWidth);
     if (audible)

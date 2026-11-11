@@ -4,10 +4,18 @@
 
 namespace
 {
+constexpr float minScale = 0.75f;
+constexpr float maxScale = 2.0f;
+constexpr std::array<float, 4> scalePresets { 1.0f, 1.25f, 1.5f, 1.75f };
 constexpr int topBarHeight = 48;
-constexpr int bottomHeight = 104;
-constexpr int gutter = 12;
+constexpr int logoWidth = 240;
+constexpr int iconWidth = 52;
+constexpr int gutter = 24;
+constexpr int rowHeight = 88;
+constexpr int rowGap = 12;
+constexpr int sideColumnWidth = 260;
 const juce::String minusSign = juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"));
+const juce::String middleDot = juce::String (juce::CharPointer_UTF8 ("\xc2\xb7"));
 
 juce::String signedDb (float value, const juce::String& unit)
 {
@@ -20,17 +28,34 @@ juce::RangedAudioParameter& parameter (LuckyReferenceProcessor& processor, const
 {
     return *processor.getParameters().getParameter (id);
 }
+
+/** Three dots, as on Lucky Seven's menu button. */
+std::unique_ptr<juce::Drawable> makeMenuIcon (juce::Colour colour)
+{
+    juce::Path path;
+    for (const auto x : { 4.0f, 11.0f, 18.0f })
+        path.addEllipse (x - 1.6f, 9.4f, 3.2f, 3.2f);
+
+    auto drawable = std::make_unique<juce::DrawablePath>();
+    drawable->setPath (path);
+    drawable->setFill (colour);
+    return drawable;
+}
+
+/** Top edge of the stage under the slot rows. */
+int stageTop()
+{
+    constexpr auto slots = LuckyReferenceProcessor::numSlots;
+    return topBarHeight + gutter * 2 / 3 + slots * rowHeight + (slots - 1) * rowGap + gutter * 2 / 3;
+}
 } // namespace
 
-LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorToEdit)
-    : AudioProcessorEditor (processorToEdit),
-      owner (processorToEdit),
-      referenceAttachment (parameter (processorToEdit, LuckyReferenceProcessor::referenceId), [this] (float value) { referenceOn = value > 0.5f; syncControls(); }),
-      slotAttachment (parameter (processorToEdit, LuckyReferenceProcessor::slotId), [this] (float value) { selectedSlot = juce::roundToInt (value); syncControls(); }),
-      matchAttachment (*dynamic_cast<juce::AudioParameterBool*> (&parameter (processorToEdit, LuckyReferenceProcessor::matchId)), matchButton)
+LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
+    : owner (processor),
+      referenceAttachment (parameter (processor, LuckyReferenceProcessor::referenceId), [this] (float value) { referenceOn = value > 0.5f; syncControls(); }),
+      slotAttachment (parameter (processor, LuckyReferenceProcessor::slotId), [this] (float value) { selectedSlot = juce::roundToInt (value); syncControls(); }),
+      matchAttachment (*dynamic_cast<juce::AudioParameterBool*> (&parameter (processor, LuckyReferenceProcessor::matchId)), matchButton)
 {
-    setWantsKeyboardFocus (false);
-
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
     {
         rows[static_cast<size_t> (i)] = std::make_unique<lucky::SlotRow> (owner, i);
@@ -45,11 +70,14 @@ LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorTo
     matchButton.getProperties().set ("outline", true);
     matchButton.getProperties().set ("toggle", true);
     matchButton.setWantsKeyboardFocus (false);
-    matchButton.setTooltip ("Turn the reference to your mix's loudness");
+    matchButton.setTooltip ("On: the reference is turned to your mix's loudness, for a fair comparison. "
+                            "Off: it plays at its real level, so you can hear the loudness gap.");
     addAndMakeVisible (matchButton);
 
-    menuButton.setButtonText (juce::String (juce::CharPointer_UTF8 ("\xe2\x8b\xaf")));
-    menuButton.getProperties().set ("round", true);
+    const auto idleIcon = makeMenuIcon (lucky::theme::textDim);
+    const auto hoverIcon = makeMenuIcon (lucky::theme::text);
+    menuButton.setImages (idleIcon.get(), hoverIcon.get());
+    menuButton.setEdgeIndent (16);
     menuButton.setWantsKeyboardFocus (false);
     menuButton.onClick = [this] { showMenu(); };
     addAndMakeVisible (menuButton);
@@ -61,23 +89,20 @@ LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorTo
     matchButton.setColour (juce::Slider::rotarySliderFillColourId, accent);
 
     owner.addChangeListener (this);
-    setResizable (true, true);
-    setResizeLimits (600, 380, 1400, 760);
-    setSize (720, 420);
     startTimerHz (30);
 }
 
-LuckyReferenceEditor::~LuckyReferenceEditor()
+LuckyReferenceView::~LuckyReferenceView()
 {
     owner.removeChangeListener (this);
 }
 
-juce::Colour LuckyReferenceEditor::targetAccent() const
+juce::Colour LuckyReferenceView::targetAccent() const
 {
     return referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
 }
 
-void LuckyReferenceEditor::syncControls()
+void LuckyReferenceView::syncControls()
 {
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
@@ -86,7 +111,7 @@ void LuckyReferenceEditor::syncControls()
     repaint();
 }
 
-void LuckyReferenceEditor::changeListenerCallback (juce::ChangeBroadcaster*)
+void LuckyReferenceView::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     gainShown = false;
     for (auto& row : rows)
@@ -94,7 +119,7 @@ void LuckyReferenceEditor::changeListenerCallback (juce::ChangeBroadcaster*)
     repaint();
 }
 
-void LuckyReferenceEditor::timerCallback()
+void LuckyReferenceView::timerCallback()
 {
     sourceSwitch.tick();
 
@@ -120,37 +145,40 @@ void LuckyReferenceEditor::timerCallback()
     for (auto& row : rows)
         row->repaint();
     repaint (getLocalBounds().removeFromTop (topBarHeight));
-    repaint (getLocalBounds().removeFromBottom (bottomHeight));
+    repaint (getLocalBounds().withTop (stageTop()));
 }
 
-void LuckyReferenceEditor::paint (juce::Graphics& g)
+void LuckyReferenceView::paint (juce::Graphics& g)
 {
     using namespace lucky;
     g.fillAll (theme::background);
 
-    auto topBar = getLocalBounds().removeFromTop (topBarHeight).toFloat();
+    auto topBar = getLocalBounds().removeFromTop (topBarHeight);
     g.setColour (theme::topBar);
     g.fillRect (topBar);
 
-    auto logo = topBar.reduced (static_cast<float> (gutter), 0.0f);
-    const auto glyphA = logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f);
-    const auto glyphB = logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f);
+    auto logo = topBar.removeFromLeft (logoWidth).reduced (16, 0).toFloat();
     const auto dim = theme::textDim.withAlpha (0.35f);
-    segment::paint (g, glyphA, segment::letterA, referenceOn ? dim : accent);
-    segment::paint (g, glyphB, segment::letterB, referenceOn ? accent : dim);
-
+    segment::paint (g, logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f), segment::letterA, referenceOn ? dim : accent);
+    segment::paint (g, logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f), segment::letterB, referenceOn ? accent : dim);
     g.setColour (theme::text);
     g.setFont (theme::labelFont (15.0f).withStyle ("Bold"));
     g.drawText ("LUCKY REFERENCE", logo.withTrimmedLeft (12.0f), juce::Justification::centredLeft);
 
-    auto bottom = getLocalBounds().removeFromBottom (bottomHeight).toFloat();
+    g.setColour (theme::background);
+    for (const auto x : { logoWidth, getWidth() - iconWidth })
+        g.fillRect (x, 0, 1, topBarHeight);
+
+    const auto stage = getLocalBounds().withTop (stageTop());
     g.setColour (theme::strip);
-    g.fillRect (bottom);
-    paintReadout (g, bottom.withTrimmedLeft (static_cast<float> (gutter * 2 + sourceSwitch.getWidth()))
-                          .withTrimmedRight (static_cast<float> (gutter * 2 + matchButton.getWidth())));
+    g.fillRect (stage);
+    g.setColour (theme::outline);
+    g.fillRect (stage.getX(), stage.getY(), stage.getWidth(), 1);
+
+    paintReadout (g, stage.reduced (gutter, 0).removeFromLeft (sideColumnWidth).toFloat());
 }
 
-void LuckyReferenceEditor::paintReadout (juce::Graphics& g, juce::Rectangle<float> area)
+void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float> area)
 {
     using namespace lucky;
     const auto& engine = owner.getEngine();
@@ -176,46 +204,51 @@ void LuckyReferenceEditor::paintReadout (juce::Graphics& g, juce::Rectangle<floa
     else
     {
         headline = "Ref " + signedDb (shownGainDb, "dB");
-        detail = "Mix " + signedDb (mix, "LUFS") + "  " + juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) + "  Ref " + signedDb (reference, "LUFS");
+        detail = "Mix " + signedDb (mix, "LUFS") + "  " + middleDot + "  Ref " + signedDb (reference, "LUFS");
         if (! matching)
-        {
-            detail << "  " << juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) << "  not applied";
             headlineColour = theme::textDim;
-        }
     }
 
-    const auto block = area.withSizeKeepingCentre (area.getWidth(), 56.0f);
+    const auto block = area.withSizeKeepingCentre (area.getWidth(), 60.0f);
     g.setColour (headlineColour);
-    g.setFont (theme::labelFont (28.0f).withStyle ("Bold").withKerningFactor (0.02f));
-    g.drawText (headline, block.withHeight (34.0f), juce::Justification::centred);
+    g.setFont (theme::labelFont (26.0f).withStyle ("Bold").withKerningFactor (0.02f));
+    g.drawText (headline, block.withHeight (34.0f), juce::Justification::centredLeft);
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (12.0f));
-    g.drawText (detail, block.withTrimmedTop (36.0f), juce::Justification::centred);
+    g.drawText (detail, block.withTrimmedTop (38.0f), juce::Justification::centredLeft);
 }
 
-void LuckyReferenceEditor::resized()
+void LuckyReferenceView::resized()
 {
     auto bounds = getLocalBounds();
     auto topBar = bounds.removeFromTop (topBarHeight);
-    menuButton.setBounds (topBar.removeFromRight (topBarHeight).reduced (8));
+    menuButton.setBounds (topBar.removeFromRight (iconWidth));
 
-    auto bottom = bounds.removeFromBottom (bottomHeight).reduced (gutter * 2, 0);
-    sourceSwitch.setBounds (bottom.removeFromLeft (220).withSizeKeepingCentre (220, 52));
-    matchButton.setBounds (bottom.removeFromRight (96).withSizeKeepingCentre (96, 32));
-
-    auto area = bounds.reduced (gutter);
-    const auto rowHeight = (area.getHeight() - gutter * 2) / LuckyReferenceProcessor::numSlots;
+    auto area = bounds.withBottom (stageTop()).reduced (gutter, gutter * 2 / 3);
     for (auto& row : rows)
     {
         row->setBounds (area.removeFromTop (rowHeight));
-        area.removeFromTop (gutter);
+        area.removeFromTop (rowGap);
     }
+
+    auto stage = getLocalBounds().withTop (stageTop()).reduced (gutter, 0);
+    stage.removeFromLeft (sideColumnWidth);
+    matchButton.setBounds (stage.removeFromRight (sideColumnWidth).removeFromRight (140).withSizeKeepingCentre (140, 34));
+    sourceSwitch.setBounds (stage.withSizeKeepingCentre (220, 52));
 }
 
-void LuckyReferenceEditor::showMenu()
+void LuckyReferenceView::showMenu()
 {
+    juce::PopupMenu sizes;
+    const auto scale = getScale != nullptr ? getScale() : 1.0f;
+    for (const auto preset : scalePresets)
+        sizes.addItem (juce::String (juce::roundToInt (preset * 100.0f)) + "%", true, std::abs (scale - preset) < 0.01f,
+                       [this, preset] { if (onScaleRequested) onScaleRequested (preset); });
+
     juce::PopupMenu menu;
-    menu.addSectionHeader ("Lucky Reference " JucePlugin_VersionString);
+    menu.addSectionHeader (juce::String ("Lucky Reference v") + JucePlugin_VersionString);
+    menu.addSubMenu ("Window size", sizes);
+    menu.addSeparator();
     menu.addItem ("Put it last on your master, after any limiter", false, false, [] {});
     menu.addItem ("Exports always contain your mix", false, false, [] {});
     menu.addSeparator();
@@ -225,4 +258,40 @@ void LuckyReferenceEditor::showMenu()
                           owner.clearSlot (i);
                   });
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&menuButton));
+}
+
+LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorToEdit)
+    : AudioProcessorEditor (processorToEdit), view (processorToEdit)
+{
+    const auto savedScale = juce::jlimit (minScale, maxScale, settings->getUiScale());
+
+    view.getScale = [this] { return currentScale(); };
+    view.onScaleRequested = [this] (float scale)
+    {
+        setSize (juce::roundToInt (LuckyReferenceView::baseWidth * scale), juce::roundToInt (LuckyReferenceView::baseHeight * scale));
+    };
+    addAndMakeVisible (view);
+
+    setResizable (true, true);
+    setResizeLimits (juce::roundToInt (LuckyReferenceView::baseWidth * minScale), juce::roundToInt (LuckyReferenceView::baseHeight * minScale),
+                     juce::roundToInt (LuckyReferenceView::baseWidth * maxScale), juce::roundToInt (LuckyReferenceView::baseHeight * maxScale));
+    getConstrainer()->setFixedAspectRatio (static_cast<double> (LuckyReferenceView::baseWidth) / LuckyReferenceView::baseHeight);
+
+    setSize (juce::roundToInt (LuckyReferenceView::baseWidth * savedScale), juce::roundToInt (LuckyReferenceView::baseHeight * savedScale));
+    sizeRestored = true;
+}
+
+float LuckyReferenceEditor::currentScale() const
+{
+    return static_cast<float> (getWidth()) / static_cast<float> (LuckyReferenceView::baseWidth);
+}
+
+void LuckyReferenceEditor::resized()
+{
+    const auto scale = currentScale();
+    view.setBounds (0, 0, LuckyReferenceView::baseWidth, LuckyReferenceView::baseHeight);
+    view.setTransform (juce::AffineTransform::scale (scale));
+
+    if (sizeRestored)
+        settings->setUiScale (scale);
 }

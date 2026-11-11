@@ -22,7 +22,7 @@ inline const juce::Colour mixColour { 0xffc9cad0 };
 /** Pastel colour for a reference slot (0, 1 or 2), from the Lucky family palette. */
 inline juce::Colour slotColour (int slot)
 {
-    static const juce::Colour colours[] { juce::Colour (0xff85aad6), juce::Colour (0xffd685be), juce::Colour (0xff85d68f) };
+    static const juce::Colour colours[] { accent, juce::Colour (0xffd685be), juce::Colour (0xff85d68f) };
     return colours[static_cast<size_t> (juce::jlimit (0, 2, slot))];
 }
 
