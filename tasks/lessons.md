@@ -39,3 +39,7 @@ Carried over from Lucky Seven where they apply.
 ## Keep a browser independent of hidden state
 - **Mistake:** the library loaded into "the selected slot" (shown as "INTO REF 1"), so what a double-click did depended on state chosen on another screen; SUGGEST and favourites added features nobody needed.
 - **Rule:** a browser says where things go on the thing itself (per-row 1 2 3 buttons), every panel has an obvious way back (tabs plus the logo, as in Lucky Seven), and the main screen works without the power-user feature.
+
+## Never take text focus in a plug-in unasked
+- **Mistake:** the library focused its search box on open, so the host's space bar typed into it instead of stopping playback.
+- **Rule:** a text field only takes focus when clicked, and clicking elsewhere gives it up. Panels hold focus themselves and handle only their own keys, so everything else reaches the host.
