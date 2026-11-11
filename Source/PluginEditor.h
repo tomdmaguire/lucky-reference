@@ -36,6 +36,7 @@ private:
     void syncControls();
     void showMenu();
     void paintReadout (juce::Graphics&, juce::Rectangle<float> area);
+    void paintShortcutHint (juce::Graphics&, juce::Rectangle<float> area);
     juce::Colour targetAccent() const;
     float referenceFast() const;
 

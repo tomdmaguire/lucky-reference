@@ -107,18 +107,19 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 │ YOUR MIX VS REF 1     .-~~~~~~~~~~-.                     │
 │ 3.4 dB quieter       (  ( MIX|REF )  )     [● LEVEL MATCH]│
 │ Mix −11.2 · Ref −7.8  '-~~~~~~~~~~-'                     │
-│                   ← →  TO SWITCH   1 2 3  SLOTS          │
+│              [←][→] SWITCH   [1][2][3] REFERENCE         │
 └──────────────────────────────────────────────────────────┘
 ```
 
 - Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators and the three-dot menu (window size, placement hints, remove all references).
 - Three outlined slot rows: waveform with coloured loop region and playhead, file name, loop length.
-- The stage: readout on the left, the A/B switch in the centre inside the loudness rings, LEVEL MATCH on the right, and a shortcut hint underneath.
+- The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout headline, the switch and LEVEL MATCH share one centre line.
+- LEVEL MATCH only affects the reference, so it always takes the selected reference's colour, as does the "Levels not matched" note.
 - **Keyboard:** ← plays the mix, → plays the reference, 1/2/3 choose the slot. The window takes keyboard focus when shown and when clicked; buttons never take it. The host's own key mapping of the `reference` parameter also works.
 
 ### Visual delight
 
-- **Loudness rings:** two halos around the switch, one for the mix (neutral) and one for the selected reference (its colour), whose size follows each signal's momentary loudness with meter-like ballistics. The audible one is bright, the other faint; when levels match they sit together. Every switch sends a ripple out in the new source's colour, echoing Lucky Seven's ripples.
+- **Radar ripples:** Lucky Seven's map ripples applied to the switch. Each hit in the audible signal (its 25 ms level jumping relative to the mix loudness) sends a faint circle out from the knob that grows and fades over 2.6 s, so a few overlap like a radar; a soft glow behind the knob follows the level. Every switch sends a stronger ripple in the new source's colour. Meant to be felt more than watched. (A halo design around the switch was tried and dropped in favour of this.)
 - **Springy switch:** the knob slides with a slight overshoot and stretch.
 - **Logo as the switch indicator:** a seven-segment "A" while you are on the mix and a lowercase "b" on a reference. The seven-segment display is the family brand; Lucky Seven shows "7", Lucky Reference shows "Ab".
 - **Colour sweep:** the UI accent moves from a neutral mix colour to the selected reference's colour when you flip.

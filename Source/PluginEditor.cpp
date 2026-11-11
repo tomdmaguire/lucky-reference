@@ -238,10 +238,53 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.fillRect (stage.getX(), stage.getY(), stage.getWidth(), 1);
 
 
-    g.setColour (theme::textDim.withAlpha (0.8f));
-    g.setFont (theme::labelFont (10.0f));
-    g.drawText (juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x90 \xe2\x86\x92  TO SWITCH   1 2 3  SLOTS")),
-                stage.withTop (stage.getBottom() - hintHeight).withTrimmedBottom (10), juce::Justification::centred);
+    paintShortcutHint (g, stage.withTop (stage.getBottom() - hintHeight).withTrimmedBottom (8).toFloat());
+}
+
+void LuckyReferenceView::paintShortcutHint (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    using namespace lucky;
+    struct Part { juce::String text; bool isKey; };
+    const Part parts[] { { juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x90")), true }, { juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x92")), true },
+                         { "SWITCH", false }, { "1", true }, { "2", true }, { "3", true }, { "REFERENCE", false } };
+    constexpr float keySize = 17.0f, keyGap = 4.0f, wordGap = 8.0f, groupGap = 22.0f;
+
+    const auto keyFont = theme::labelFont (10.0f).withStyle ("Bold");
+    const auto wordFont = theme::labelFont (10.0f);
+    auto widthOf = [&] (const Part& part) { return part.isKey ? keySize : juce::GlyphArrangement::getStringWidth (wordFont, part.text); };
+    auto gapAfter = [&] (size_t i)
+    {
+        if (i + 1 == std::size (parts))
+            return 0.0f;
+        if (! parts[i].isKey)
+            return groupGap;
+        return parts[i + 1].isKey ? keyGap : wordGap;
+    };
+
+    auto total = 0.0f;
+    for (size_t i = 0; i < std::size (parts); ++i)
+        total += widthOf (parts[i]) + gapAfter (i);
+
+    auto x = area.getCentreX() - total * 0.5f;
+    for (size_t i = 0; i < std::size (parts); ++i)
+    {
+        const auto& part = parts[i];
+        const auto box = juce::Rectangle<float> (x, area.getCentreY() - keySize * 0.5f, widthOf (part), keySize);
+        if (part.isKey)
+        {
+            g.setColour (theme::outline.brighter (0.3f));
+            g.drawRoundedRectangle (box.reduced (0.5f), 3.0f, 1.0f);
+            g.setColour (theme::textDim);
+            g.setFont (keyFont);
+        }
+        else
+        {
+            g.setColour (theme::textDim.withAlpha (0.8f));
+            g.setFont (wordFont);
+        }
+        g.drawText (part.text, box, juce::Justification::centred);
+        x += box.getWidth() + gapAfter (i);
+    }
 }
 
 void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float> area)
