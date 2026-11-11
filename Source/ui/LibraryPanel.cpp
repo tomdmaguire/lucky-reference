@@ -96,7 +96,7 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     list.setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
     list.setColour (juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
     list.getViewport()->setScrollBarThickness (8);
-    list.addKeyListener (this);
+    list.setWantsKeyboardFocus (false);
     list.addMouseListener (this, true);
     addAndMakeVisible (list);
 
@@ -108,19 +108,17 @@ LibraryPanel::~LibraryPanel()
 {
     library.removeChangeListener (this);
     searchBox.removeKeyListener (this);
-    list.removeKeyListener (this);
     list.removeMouseListener (this);
 }
 
 void LibraryPanel::opened()
 {
     library.rescan();
-    rankedAgainst = sortClosest && mixProfile != nullptr ? mixProfile() : std::nullopt;
+    rank();
     refresh();
     if (! shown.empty() && list.getSelectedRow() < 0)
         list.selectRow (0);
-    searchBox.selectAll();
-    searchBox.grabKeyboardFocus();
+    grabKeyboardFocus();
     ticks = 0;
     startTimer (tickMilliseconds);
 }
@@ -135,8 +133,8 @@ void LibraryPanel::timerCallback()
     if (++ticks % rescanTicks == 0 && ! library.isReading())
         library.rescan();
 
-    if (sortClosest && ! rankedAgainst && mixProfile != nullptr)
-        if ((rankedAgainst = mixProfile()))
+    if (sortClosest && ! rankedAgainst)
+        if (rank(); rankedAgainst)
         {
             refresh();
             list.scrollToEnsureRowIsOnscreen (0);
@@ -155,12 +153,18 @@ void LibraryPanel::setClosest (bool closest)
     sortClosest = closest;
     nameOrderButton.setToggleState (! closest, juce::dontSendNotification);
     closestOrderButton.setToggleState (closest, juce::dontSendNotification);
-    rankedAgainst = closest && mixProfile != nullptr ? mixProfile() : std::nullopt;
+    rank();
     resized();
     refresh();
     list.scrollToEnsureRowIsOnscreen (0);
     if (! shown.empty())
         list.selectRow (0);
+}
+
+void LibraryPanel::rank()
+{
+    rankedAgainst = sortClosest && mixProfile != nullptr ? mixProfile() : std::nullopt;
+    rankedSeconds = rankedAgainst && mixSeconds != nullptr ? mixSeconds() : 0.0;
 }
 
 bool LibraryPanel::waitingForMix() const
@@ -173,7 +177,10 @@ juce::String LibraryPanel::hintText() const
     if (! sortClosest || ! rankedAgainst || totalEntries == 0)
         return {};
 
-    juce::String text = "Ranked by tonal balance and punch against the last two minutes of your mix";
+    const auto heard = juce::roundToInt (rankedSeconds);
+    juce::String text = "Ranked by tonal balance and punch against "
+                      + (heard >= 120 ? juce::String ("the last two minutes of your mix")
+                                      : "the " + juce::String (heard) + " s of your mix heard so far. Click CLOSEST again to update");
     if (analysedEntries < totalEntries)
         text += juce::String::fromUTF8 ("  \xc2\xb7  ") + "analysing " + juce::String (analysedEntries) + " of " + juce::String (totalEntries);
     return text;
@@ -453,16 +460,6 @@ bool LibraryPanel::keyPressed (const juce::KeyPress& key, juce::Component* origi
         list.selectRow (row);
         return true;
     }
-    if (originator == &list)
-    {
-        if (const auto character = key.getTextCharacter(); character >= '1' && character < '1' + numSlots && ! key.getModifiers().isAnyModifierKeyDown())
-        {
-            chooseRow (list.getSelectedRow(), static_cast<int> (character - '1'));
-            return true;
-        }
-        if (key == juce::KeyPress::escapeKey)
-            return keyPressed (key);
-    }
     return false;
 }
 
@@ -474,7 +471,31 @@ bool LibraryPanel::keyPressed (const juce::KeyPress& key)
             onClose();
         return true;
     }
+    if (! list.isVisible() || shown.empty())
+        return false;
+
+    if (key == juce::KeyPress::upKey || key == juce::KeyPress::downKey)
+    {
+        const auto row = juce::jlimit (0, static_cast<int> (shown.size()) - 1, list.getSelectedRow() + (key == juce::KeyPress::downKey ? 1 : -1));
+        list.selectRow (row);
+        return true;
+    }
+    if (key == juce::KeyPress::returnKey)
+    {
+        chooseRowIntoEmptySlot (list.getSelectedRow());
+        return true;
+    }
+    if (const auto character = key.getTextCharacter(); character >= '1' && character < '1' + numSlots && ! key.getModifiers().isAnyModifierKeyDown())
+    {
+        chooseRow (list.getSelectedRow(), static_cast<int> (character - '1'));
+        return true;
+    }
     return false;
+}
+
+void LibraryPanel::mouseDown (const juce::MouseEvent&)
+{
+    grabKeyboardFocus();
 }
 
 bool LibraryPanel::isInterestedInFileDrag (const juce::StringArray& files)
@@ -545,7 +566,8 @@ void LibraryPanel::paint (juce::Graphics& g)
         g.drawText ("Play your mix for " + juce::String (juce::roundToInt (mixSecondsNeeded)) + " seconds", message.removeFromTop (28), juce::Justification::centred);
         g.setColour (theme::textDim);
         g.setFont (theme::labelFont (13.0f));
-        g.drawFittedText ("Then your library is ranked by how close each track's tonal balance and punch are to your mix.",
+        g.drawFittedText ("Then your library is ranked by how close each track's tonal balance and punch are to your mix. "
+                          "The longer it plays, the better the match, up to two minutes.",
                           message.removeFromTop (44), juce::Justification::centred, 2);
         const auto bar = message.removeFromTop (20).toFloat().withSizeKeepingCentre (200.0f, 4.0f);
         g.setColour (theme::outline);

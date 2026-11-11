@@ -160,9 +160,12 @@ void SlotRow::paint (juce::Graphics& g)
             g.fillRect (x - 1.0f, area.getY() - 2.0f, 2.0f, area.getHeight() + 4.0f);
     }
 
-    const auto playheadX = xAt (static_cast<double> (processor.getEngine().getPosition (slot)) / track->getSampleRate());
-    g.setColour (theme::text.withAlpha (audible ? 0.95f : 0.4f));
-    g.fillRect (playheadX - 0.5f, area.getY() - 2.0f, 1.0f, area.getHeight() + 4.0f);
+    if (selected)
+    {
+        const auto playheadX = xAt (static_cast<double> (processor.getEngine().getPosition (slot)) / track->getSampleRate());
+        g.setColour (theme::text.withAlpha (audible ? 0.95f : 0.4f));
+        g.fillRect (playheadX - 0.5f, area.getY() - 2.0f, 1.0f, area.getHeight() + 4.0f);
+    }
 
     removeButtonArea = label.withLeft (label.getRight() - 18.0f).withSizeKeepingCentre (18.0f, 18.0f);
     auto labelArea = label.withTrimmedRight (28.0f);

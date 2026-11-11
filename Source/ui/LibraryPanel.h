@@ -40,7 +40,8 @@ public:
     /** Seconds of the mix needed before it can be compared. */
     double mixSecondsNeeded = 20.0;
 
-    /** Rescans the library, selects the search text and focuses the search box. */
+    /** Rescans the library and takes keyboard focus for the list keys (the search box only takes it when clicked, so
+        keys the panel doesn't use, such as the host's space bar, still reach the host). */
     void opened();
 
     /** Stops the periodic rescan. */
@@ -59,6 +60,7 @@ public:
     void paintOverChildren (juce::Graphics&) override;
     void resized() override;
     bool keyPressed (const juce::KeyPress&) override;
+    void mouseDown (const juce::MouseEvent&) override;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
 
@@ -76,6 +78,8 @@ private:
     bool keyPressed (const juce::KeyPress&, juce::Component* originator) override;
     void timerCallback() override;
 
+    /** Ranks against the mix as it is now, or clears the ranking if the mix isn't ready. */
+    void rank();
     void refresh();
     void updateVisibility();
     bool waitingForMix() const;
@@ -95,6 +99,7 @@ private:
     bool sortClosest = false;
     /** The mix profile the list was last ranked against; kept fixed so rows don't move while you browse. */
     std::optional<TonalProfile> rankedAgainst;
+    double rankedSeconds = 0.0;
     int hoverRow = -1, hoverSlot = -1;
     juce::String notice;
     juce::uint32 noticeUntil = 0;

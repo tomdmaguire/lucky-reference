@@ -369,8 +369,8 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
     }
     else if (! std::isfinite (mix))
     {
-        headline = "Measuring...";
-        detail = "Play your mix for a few seconds";
+        headline = engine.isPlaying() ? "Measuring..." : "Waiting for your mix";
+        detail = engine.isPlaying() ? "Keep playing for a few seconds" : "Press play in your DAW";
         headlineColour = theme::textDim;
     }
     else
