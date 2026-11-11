@@ -59,8 +59,8 @@ public:
     /** Loudness in LUFS of a slot's loop, or -infinity when the slot is empty or silent. */
     float getReferenceLoudness (int slot) const noexcept { return referenceLoudness[static_cast<size_t> (slot)].load(); }
 
-    /** Momentary loudness in LUFS of the mix's latest 400 ms while the transport plays, or -infinity. */
-    float getMixMomentary() const noexcept { return mixMomentary.load(); }
+    /** K-weighted level in LUFS of the mix's latest 25 ms while the transport plays, or -infinity. */
+    float getMixFast() const noexcept { return mixFast.load(); }
 
     /** Gain in dB being applied to a slot's reference, including the fade-in before the first estimate (-infinity while silent). */
     float getAppliedGainDb (int slot) const noexcept { return appliedGainsDb[static_cast<size_t> (slot)].load(); }
@@ -98,7 +98,7 @@ private:
     std::array<Fader, numSlots> referenceFaders;
     std::array<juce::SmoothedValue<float>, numSlots> gainsDb;
     std::array<juce::SmoothedValue<float>, numSlots> readiness;
-    std::atomic<float> mixMomentary { -std::numeric_limits<float>::infinity() };
+    std::atomic<float> mixFast { -std::numeric_limits<float>::infinity() };
     std::array<std::atomic<float>, numSlots> appliedGainsDb;
     bool wasMatching = true;
     bool wasPlaying = false;

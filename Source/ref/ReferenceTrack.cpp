@@ -62,7 +62,7 @@ ReferenceTrack::ReferenceTrack (juce::File source, juce::AudioBuffer<float> ster
             overview[static_cast<size_t> (bucket)] = std::max (audio.getMagnitude (0, start, end - start), audio.getMagnitude (1, start, end - start));
     }
 
-    slices = LoudnessMeter::sliceEnergies (audio, rate);
+    slices = LoudnessMeter::sliceEnergies (audio, rate, &fastSlices);
 }
 
 float ReferenceTrack::getLoudness (const LoopRegion& loop) const
@@ -75,15 +75,14 @@ float ReferenceTrack::getLoudness (const LoopRegion& loop) const
     return LoudnessMeter::integratedFromSlices (slices.data() + first, std::max (0, last - first));
 }
 
-float ReferenceTrack::getMomentaryLoudness (juce::int64 position) const
+float ReferenceTrack::getFastLoudness (juce::int64 position) const
 {
-    const auto sliceLength = static_cast<juce::int64> (juce::roundToInt (rate * 0.1));
-    const auto end = std::min (static_cast<juce::int64> (slices.size()), position / std::max<juce::int64> (1, sliceLength));
-    if (end < 4)
+    const auto sliceLength = std::max<juce::int64> (1, juce::roundToInt (rate * LoudnessMeter::fastSliceSeconds));
+    const auto index = position / sliceLength - 1;
+    if (index < 0 || index >= static_cast<juce::int64> (fastSlices.size()))
         return -std::numeric_limits<float>::infinity();
 
-    const auto first = static_cast<size_t> (end - 4);
-    const auto energy = 0.25 * (slices[first] + slices[first + 1] + slices[first + 2] + slices[first + 3]);
+    const auto energy = fastSlices[static_cast<size_t> (index)];
     return energy > 0.0 ? static_cast<float> (-0.691 + 10.0 * std::log10 (energy)) : -std::numeric_limits<float>::infinity();
 }
 

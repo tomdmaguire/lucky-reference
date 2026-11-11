@@ -37,7 +37,7 @@ private:
     void showMenu();
     void paintReadout (juce::Graphics&, juce::Rectangle<float> area);
     juce::Colour targetAccent() const;
-    float referenceMomentary() const;
+    float referenceFast() const;
 
     LuckyReferenceProcessor& owner;
     std::array<std::unique_ptr<lucky::SlotRow>, LuckyReferenceProcessor::numSlots> rows;

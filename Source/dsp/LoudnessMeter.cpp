@@ -81,6 +81,7 @@ void LoudnessMeter::prepare (double sampleRate, double windowSeconds)
     }
 
     subBlockLength = std::max (1, juce::roundToInt (sampleRate * 0.1));
+    fastLength = std::max (1, juce::roundToInt (sampleRate * fastSliceSeconds));
     blocks.assign (static_cast<size_t> (std::max (1, juce::roundToInt (windowSeconds * 10.0))), 0.0);
     reset();
 }
@@ -101,15 +102,19 @@ void LoudnessMeter::reset() noexcept
     blocksHeld = 0;
     nextBlock = 0;
     latestBlock = 0.0;
+    fastFill = 0;
+    fastSum = 0.0;
+    latestFast = 0.0;
     std::fill (blocks.begin(), blocks.end(), 0.0);
 }
 
 void LoudnessMeter::process (const float* const* channels, int numChannels, int numSamples) noexcept
 {
-    filterInto (channels, numChannels, numSamples, nullptr);
+    filterInto (channels, numChannels, numSamples, nullptr, nullptr);
 }
 
-void LoudnessMeter::filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices)
+void LoudnessMeter::filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices,
+                                std::vector<double>* fastSlices)
 {
     numChannels = std::min (numChannels, 2);
 
@@ -120,6 +125,16 @@ void LoudnessMeter::filterInto (const float* const* channels, int numChannels, i
             auto& [shelf, highPass] = filters[static_cast<size_t> (ch)];
             const auto y = highPass.process (shelf.process (static_cast<double> (channels[ch][i])));
             subBlockSum += y * y;
+            fastSum += y * y;
+        }
+
+        if (++fastFill == fastLength)
+        {
+            latestFast = fastSum / static_cast<double> (fastLength);
+            if (fastSlices != nullptr)
+                fastSlices->push_back (latestFast);
+            fastFill = 0;
+            fastSum = 0.0;
         }
 
         if (++subBlockFill == subBlockLength)
@@ -154,6 +169,11 @@ float LoudnessMeter::getIntegrated() const noexcept
     return gatedLoudness (blocks.data(), blocksHeld);
 }
 
+float LoudnessMeter::getFast() const noexcept
+{
+    return latestFast > 0.0 ? static_cast<float> (energyToLufs (latestFast)) : -std::numeric_limits<float>::infinity();
+}
+
 float LoudnessMeter::getMomentary() const noexcept
 {
     return subBlocksSeen >= 4 && latestBlock > 0.0 ? static_cast<float> (energyToLufs (latestBlock)) : -std::numeric_limits<float>::infinity();
@@ -167,14 +187,16 @@ float LoudnessMeter::measure (const juce::AudioBuffer<float>& buffer, int startS
     return integratedFromSlices (slices.data(), static_cast<int> (slices.size()));
 }
 
-std::vector<double> LoudnessMeter::sliceEnergies (const juce::AudioBuffer<float>& buffer, double sampleRate)
+std::vector<double> LoudnessMeter::sliceEnergies (const juce::AudioBuffer<float>& buffer, double sampleRate, std::vector<double>* fastSlices)
 {
     LoudnessMeter meter;
     meter.prepare (sampleRate);
 
     std::vector<double> slices;
     slices.reserve (static_cast<size_t> (buffer.getNumSamples() / meter.subBlockLength + 1));
-    meter.filterInto (buffer.getArrayOfReadPointers(), buffer.getNumChannels(), buffer.getNumSamples(), &slices);
+    if (fastSlices != nullptr)
+        fastSlices->reserve (static_cast<size_t> (buffer.getNumSamples() / meter.fastLength + 1));
+    meter.filterInto (buffer.getArrayOfReadPointers(), buffer.getNumChannels(), buffer.getNumSamples(), &slices, fastSlices);
     return slices;
 }
 

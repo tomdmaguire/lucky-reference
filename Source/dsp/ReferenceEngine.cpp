@@ -35,7 +35,7 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
     }
     for (auto& applied : appliedGainsDb)
         applied.store (silentLufs);
-    mixMomentary.store (silentLufs);
+    mixFast.store (silentLufs);
     for (auto& loudness : referenceLoudness)
         loudness.store (silentLufs);
 
@@ -135,7 +135,7 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
     followTransport (transport, n);
     if (transport.isPlaying)
         mixMeter.process (buffer.getArrayOfReadPointers(), 2, n);
-    mixMomentary.store (transport.isPlaying ? mixMeter.getMomentary() : silentLufs);
+    mixFast.store (transport.isPlaying ? mixMeter.getFast() : silentLufs);
     playing.store (transport.isPlaying);
     updateMatching (controls, sources);
 

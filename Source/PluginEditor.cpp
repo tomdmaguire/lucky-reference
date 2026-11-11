@@ -11,9 +11,10 @@ constexpr int topBarHeight = 48;
 constexpr int logoWidth = 240;
 constexpr int iconWidth = 52;
 constexpr int gutter = 24;
-constexpr int rowHeight = 88;
+constexpr int rowHeight = 80;
+constexpr int hintHeight = 28;
 constexpr int rowGap = 12;
-constexpr int sideColumnWidth = 260;
+constexpr int sideColumnWidth = 230;
 const juce::String minusSign = juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"));
 const juce::String middleDot = juce::String (juce::CharPointer_UTF8 ("\xc2\xb7"));
 
@@ -67,6 +68,12 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
         addAndMakeVisible (*rows[static_cast<size_t> (i)]);
     }
 
+    rings.levelSource = [this]
+    {
+        const auto& engine = owner.getEngine();
+        return lucky::LoudnessRings::Levels { engine.getMixFast(), referenceFast(), engine.getMixLoudness(),
+                                              lucky::theme::slotColour (selectedSlot), referenceOn };
+    };
     addAndMakeVisible (rings);
     sourceSwitch.onToggle = [this] (bool on)
     {
@@ -134,13 +141,13 @@ juce::Colour LuckyReferenceView::targetAccent() const
     return referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
 }
 
-float LuckyReferenceView::referenceMomentary() const
+float LuckyReferenceView::referenceFast() const
 {
     const auto& engine = owner.getEngine();
     const auto track = owner.getTrack (selectedSlot);
     if (track == nullptr || ! engine.isPlaying())
         return -std::numeric_limits<float>::infinity();
-    return track->getMomentaryLoudness (engine.getPosition (selectedSlot)) + engine.getAppliedGainDb (selectedSlot);
+    return track->getFastLoudness (engine.getPosition (selectedSlot)) + engine.getAppliedGainDb (selectedSlot);
 }
 
 void LuckyReferenceView::syncControls()
@@ -196,9 +203,6 @@ void LuckyReferenceView::timerCallback()
         gainShown = true;
     }
 
-    rings.setLevels (engine.getMixMomentary(), referenceMomentary(), lucky::theme::slotColour (selectedSlot), referenceOn);
-    rings.tick();
-
     for (auto& row : rows)
         row->repaint();
     repaint (getLocalBounds().removeFromTop (topBarHeight));
@@ -237,7 +241,7 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.setColour (theme::textDim.withAlpha (0.8f));
     g.setFont (theme::labelFont (10.0f));
     g.drawText (juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x90 \xe2\x86\x92  TO SWITCH   1 2 3  SLOTS")),
-                stage.withTop (stage.getBottom() - 30).withTrimmedBottom (10), juce::Justification::centred);
+                stage.withTop (stage.getBottom() - hintHeight).withTrimmedBottom (10), juce::Justification::centred);
 }
 
 void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float> area)
@@ -307,6 +311,7 @@ void LuckyReferenceView::resized()
     auto stage = getLocalBounds().withTop (stageTop()).reduced (gutter, 0);
     stage.removeFromLeft (sideColumnWidth);
     matchButton.setBounds (stage.removeFromRight (sideColumnWidth).removeFromRight (140).withSizeKeepingCentre (140, 34));
+    stage.removeFromBottom (hintHeight);
     sourceSwitch.setBounds (stage.withSizeKeepingCentre (220, 52));
     rings.setBounds (stage);
     rings.setCore (sourceSwitch.getBounds().toFloat() - rings.getPosition().toFloat());
