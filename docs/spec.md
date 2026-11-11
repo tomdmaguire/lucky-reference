@@ -32,8 +32,8 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - Formats: WAV, AIFF, FLAC, MP3, M4A/AAC (CoreAudio decoders on macOS).
 - Files are decoded on a background thread, resampled to the host rate, and held in memory as stereo. Mono files are duplicated to both channels; files with more than two channels use the first two.
 - Maximum length: 15 minutes.
-- Each slot has a pastel colour from the Lucky family palette.
-- A slot whose file is missing on session load shows "Missing" with the filename; clicking it opens a browser to relocate it.
+- Each slot has a colour from the Lucky family palette: slot 1 is Lucky Seven's gold, slot 2 pink, slot 3 green.
+- References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
 - Slots can be cleared and replaced.
 
 ### 2. Source switch (A/B)
@@ -64,26 +64,26 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - On transport start, every reference playhead jumps to its loop start. Pressing play on your chorus starts each reference on its chosen section.
 - While the transport runs, all references advance in parallel, like tracks in a session, so flipping is instant.
 - Clicking inside a loop moves that reference's playhead.
-- No playback when the transport is stopped (see open questions).
+- No playback when the transport is stopped.
 
 ### 5. Loudness matching
 
 Measure: **ITU-R BS.1770 gated integrated loudness** (LUFS), the same measure on both sides.
 
 - **Reference:** the integrated loudness of its loop region, computed from the in-memory file whenever the loop changes. It takes milliseconds, so it is ready before you listen.
-- **Mix:** the integrated loudness of the mix since the measurement was last reset. It resets on transport start and on any jump in host position, so it always covers the section you are playing.
+- **Mix:** the gated loudness of the last 10 seconds of the mix, updated every 100 ms. It resets on transport start and on any jump in host position (not on a host loop wrap), so it covers the section you are playing, and turning your mix up or down moves the readout and the matched reference within about 10 seconds.
 - **Gain:** the reference is turned by `mix LUFS − reference LUFS`. Only the reference is ever adjusted; the mix level is never touched.
-- Gain changes ramp over 1 second. Because the integrated measure converges as more audio arrives, the gain settles naturally instead of riding the music.
-- Until 3 seconds of non-silent mix have been measured, the last gain is held (0 dB for a fresh session) and the readout shows "Measuring".
+- Gain changes ramp over 1 second, so the gain settles smoothly instead of riding the music.
+- Matching starts once 1.5 seconds of non-silent mix have been measured. Before the first estimate of a session, a selected reference stays silent and the readout shows "Measuring"; it then fades in at the matched level, so it never plays at its full, unmatched level. After that, the last estimate is held across stops and jumps until the new section has been measured.
 - Gain is clamped to ±24 dB. A silent reference loop is not matched.
-- A **Match** toggle turns matching off, so you can hear the real loudness gap (useful for checking a master).
+- A **LEVEL MATCH** toggle turns matching off, so you can hear the real loudness gap (useful for checking a master).
 
 ### 6. Loudness readout
 
-- Large: the gain applied to the active reference, e.g. **"Ref −3.4 dB"** (the reference was 3.4 dB louder than your mix and has been turned down).
+- Plain words: a small label **"YOUR MIX VS REF 2"**, then a large **"3.4 dB quieter"**, "2.1 dB louder" or "Same loudness" (under 0.1 dB).
 - Small, underneath: both absolute values, e.g. "Mix −11.2 LUFS · Ref −7.8 LUFS".
-- The large number animates to its new value as the measurement settles.
-- With Match off, the large number shows the same difference but is not applied.
+- The large number rolls to its new value as the measurement settles.
+- With LEVEL MATCH off, the same difference is shown with "Levels not matched".
 
 ### 7. Export safety
 
@@ -97,37 +97,39 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 ## UI
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ [Ab]  Lucky Reference                                ⋯   │
+┌──────────────┬───────────────────────────────────────┬───┐
+│ [Ab] LUCKY REFERENCE                                  │ ⋯ │
+├──────────────┴───────────────────────────────────────┴───┤
+│ ┌ 1 ▁▃▅▇▆▅▃▂[▅▇█▇▆▅]▃▂▁▂▃▅▆▅▃▂▁   Artist – Track  16 s ┐ │
+│ ┌ 2 ▁▂▃▅▆▇▆▅▄▃▂▁▂▃[▅▆▇▇▆]▅▃▂▁     Artist – Track        ┐ │
+│ ┌ 3        drop a reference here                        ┐ │
 ├──────────────────────────────────────────────────────────┤
-│ 1 ▕▁▃▅▇▆▅▃▂[▅▇█▇▆▅]▃▂▁▂▃▅▆▅▃▂▁▕  Artist – Track    ♦      │
-│ 2 ▕▁▂▃▅▆▇▆▅▄▃▂▁▂▃[▅▆▇▇▆]▅▃▂▁▕    Artist – Track          │
-│ 3 ▕        drop a reference here          ▕              │
-├──────────────────────────────────────────────────────────┤
-│        ( MIX | REF )          Ref −3.4 dB                │
-│                         Mix −11.2 LUFS · Ref −7.8 LUFS   │
-│                                         [Match ●]        │
+│ YOUR MIX VS REF 1     .-~~~~~~~~~~-.                     │
+│ 3.4 dB quieter       (  ( MIX|REF )  )     [● LEVEL MATCH]│
+│ Mix −11.2 · Ref −7.8  '-~~~~~~~~~~-'                     │
+│                   ← →  TO SWITCH   1 2 3  SLOTS          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Top bar: the logo, the name, and a ⋯ menu (about, placement hint, clear all).
-- Three slot rows: waveform with coloured loop region and playhead, file name, selection marker.
-- Bottom strip: the A/B switch, the readout and the Match toggle.
-- Fixed size with a resizable corner, like Lucky Seven.
-- Knobs and buttons never take keyboard focus (hosts handle keys unreliably). Keyboard control goes through the host instead: key-map the `reference` parameter.
+- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators and the three-dot menu (window size, placement hints, remove all references).
+- Three outlined slot rows: waveform with coloured loop region and playhead, file name, loop length.
+- The stage: readout on the left, the A/B switch in the centre inside the loudness rings, LEVEL MATCH on the right, and a shortcut hint underneath.
+- **Keyboard:** ← plays the mix, → plays the reference, 1/2/3 choose the slot. The window takes keyboard focus when shown and when clicked; buttons never take it. The host's own key mapping of the `reference` parameter also works.
 
 ### Visual delight
 
-- **Logo as the switch indicator:** a seven-segment "A" while you are on the mix and a lowercase "b" on a reference, flipping as you switch. The seven-segment display is the family brand; Lucky Seven shows "7", Lucky Reference shows "Ab".
-- **Colour sweep:** the UI accent moves from a neutral mix colour to the selected reference's colour when you flip, timed with the audio crossfade.
+- **Loudness rings:** two halos around the switch, one for the mix (neutral) and one for the selected reference (its colour), whose size follows each signal's momentary loudness with meter-like ballistics. The audible one is bright, the other faint; when levels match they sit together. Every switch sends a ripple out in the new source's colour, echoing Lucky Seven's ripples.
+- **Springy switch:** the knob slides with a slight overshoot and stretch.
+- **Logo as the switch indicator:** a seven-segment "A" while you are on the mix and a lowercase "b" on a reference. The seven-segment display is the family brand; Lucky Seven shows "7", Lucky Reference shows "Ab".
+- **Colour sweep:** the UI accent moves from a neutral mix colour to the selected reference's colour when you flip.
 - **Waveforms** that brighten inside the loop and dim outside it, with a moving playhead.
-- **The readout number** rolls to new values rather than jumping.
 
 ## Technical notes
 
 - JUCE 9, CMake + Ninja, JUCE fetched via FetchContent. Build setup, Theme and LookAndFeel copied from Lucky Seven as a starting point. Apple Silicon, VST3 only (AU can be added later in build config).
 - Zero latency.
-- **From JUCE:** plugin wrapper, parameters and state, audio file decoding (`AudioFormatManager` with CoreAudio formats), resampling, threads, GUI.
+- **From JUCE:** plugin wrapper, parameters and state, audio file decoding (`AudioFormatManager` with CoreAudio formats), threads, GUI.
+- **From macOS:** sample-rate conversion with AudioToolbox's `AudioConverter` (normal complexity, max quality); a 4-minute song loads in about 0.3 s.
 - **Written for this project:**
   - BS.1770 loudness meter: K-weighting (two biquads), 400 ms blocks with 75% overlap, −70 LUFS absolute gate and −10 LU relative gate. One implementation is used for both the offline reference measure and the live mix measure.
   - Reference player: loop playback with loop-point crossfades and the 30 ms source crossfade.
@@ -143,7 +145,9 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 
 ## Later
 
-- Performance testing as done for Lucky Seven: CPU per instance, small buffer sizes, memory use with three long references.
+- Performance testing as done for Lucky Seven: CPU per instance, small buffer sizes, memory use with three long references (`tools/LoadBenchmark.cpp` already times loading).
+- A shared Lucky UI library for both plugins: theme, look and feel, seven-segment glyphs, menu icon and the scaling editor are currently copied from Lucky Seven.
+- A personal reference library: copy loaded references into a folder such as `~/Music/Lucky Reference/References` (as emit does) and offer the ones you like for quick loading. This would also let references travel with a project.
 
 ## Decisions
 
