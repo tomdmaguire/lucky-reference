@@ -48,6 +48,8 @@ private:
     juce::Point<float> origin;
     juce::Colour colour;
     float glow = 0.0f, envelope = 0.0f, secondsSinceRipple = 1.0f;
+    /** False until the first frame on screen, which only sets the envelope, so opening mid-song isn't heard as a hit. */
+    bool listening = false;
 };
 
 } // namespace lucky

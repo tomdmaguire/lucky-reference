@@ -33,6 +33,12 @@ void RadarRipples::ripple (juce::Point<float> from, juce::Colour rippleColour)
 
 void RadarRipples::timerCallback()
 {
+    if (! isShowing() || getLocalBounds().isEmpty())
+    {
+        listening = false;
+        return;
+    }
+
     auto level = 0.0f;
     if (levelSource != nullptr)
     {
@@ -42,6 +48,13 @@ void RadarRipples::timerCallback()
         const auto centre = std::isfinite (levels.centreLufs) ? levels.centreLufs : -14.0f;
         if (std::isfinite (levels.audibleLufs))
             level = juce::jlimit (0.0f, 1.0f, (levels.audibleLufs - centre + levelBelowCentreLu) / levelRangeLu);
+    }
+
+    if (! listening)
+    {
+        listening = true;
+        envelope = level;
+        glow = level;
     }
 
     glow = level > glow ? glow + (level - glow) * 0.35f : glow * 0.95f;

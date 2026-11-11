@@ -104,6 +104,7 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     referenceAttachment.sendInitialUpdate();
     slotAttachment.sendInitialUpdate();
     matchAttachment.sendInitialUpdate();
+    controlsSynced = true;
     accent = targetAccent();
 
     setWantsKeyboardFocus (true);
@@ -163,7 +164,6 @@ void LuckyReferenceView::syncControls()
         const auto colour = fromReferenceSide ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
         radar.ripple (sourceSwitch.getPosition().toFloat() + sourceSwitch.getSideCentre (fromReferenceSide) - radar.getPosition().toFloat(), colour);
     }
-    controlsSynced = true;
     sourceSwitchShowsReference = referenceOn;
     shownSlot = selectedSlot;
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
