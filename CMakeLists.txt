@@ -42,6 +42,7 @@ juce_add_binary_data(LuckyReferenceFonts
 )
 
 set(LUCKY_REFERENCE_CORE_SOURCES
+    Source/dsp/LoudnessMeter.cpp
 )
 
 target_sources(LuckyReference PRIVATE
@@ -74,6 +75,7 @@ juce_add_console_app(LuckyReferenceTests PRODUCT_NAME "Lucky Reference Tests")
 
 target_sources(LuckyReferenceTests PRIVATE
     Tests/TestMain.cpp
+    Tests/LoudnessMeterTests.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}
 )
 
