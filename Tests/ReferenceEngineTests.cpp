@@ -131,14 +131,35 @@ public:
             expectEquals (harness.engine.getPosition (0), juce::int64 { blockSize * 20 });
         }
 
-        beginTest ("Before the mix has been measured, the reference is not turned");
+        beginTest ("Before the first mix estimate the reference is silent, then fades in matched");
         {
             Harness harness;
             harness.engine.setSlot (0, loudReference, {});
             harness.controls = { true, 0, true };
-            const auto output = harness.run (test::sine (-20.0f, 2.0, rate));
-            expect (harness.engine.isMeasuring());
-            expectWithinAbsoluteError (loudnessOfEnd (output, 1.5), -14.0f, 0.2f);
+            const auto output = harness.run (test::sine (-20.0f, 4.0, rate));
+            const auto afterMixFade = static_cast<int> (0.05 * rate), beforeEstimate = static_cast<int> (1.4 * rate);
+            const auto level = output.getMagnitude (0, afterMixFade, beforeEstimate - afterMixFade);
+            expect (level < 1.0e-4f, "level before estimate " + juce::String (level));
+            expect (! harness.engine.isMeasuring());
+            expectWithinAbsoluteError (loudnessOfEnd (output, 2.0), -20.0f, 0.3f);
+        }
+
+        beginTest ("With Match off the reference plays straight away");
+        {
+            Harness harness;
+            harness.engine.setSlot (0, loudReference, {});
+            harness.controls = { true, 0, false };
+            const auto output = harness.run (test::sine (-20.0f, 1.0, rate));
+            expectWithinAbsoluteError (loudnessOfEnd (output, 0.6), -14.0f, 0.3f);
+        }
+
+        beginTest ("The mix measurement follows a level change within the window");
+        {
+            Harness harness;
+            harness.run (test::sine (-26.0f, 20.0, rate));
+            expectWithinAbsoluteError (harness.engine.getMixLoudness(), -26.0f, 0.1f);
+            harness.run (test::sine (-20.0f, 11.0, rate));
+            expectWithinAbsoluteError (harness.engine.getMixLoudness(), -20.0f, 0.1f);
         }
 
         beginTest ("Starting the transport restarts every reference at its loop start");

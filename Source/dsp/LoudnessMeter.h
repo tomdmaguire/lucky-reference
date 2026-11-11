@@ -7,14 +7,14 @@
 namespace lucky
 {
 
-/** ITU-R BS.1770-4 gated integrated loudness of a mono or stereo signal.
-    Streams audio through the K-weighting filter in 400 ms blocks every 100 ms and keeps the block energies in a fine
-    histogram, so the integrated value needs no allocation after prepare() however long the measurement runs. */
+/** ITU-R BS.1770-4 gated loudness of a mono or stereo signal.
+    Streams audio through the K-weighting filter in 400 ms blocks every 100 ms and keeps the most recent window of block
+    energies, so the integrated value follows the last few seconds and needs no allocation after prepare(). */
 class LoudnessMeter
 {
 public:
-    /** Allocates the histogram and derives the K-weighting coefficients for the sample rate; resets the measurement. */
-    void prepare (double sampleRate);
+    /** Derives the K-weighting coefficients for the sample rate and holds windowSeconds of blocks; resets the measurement. */
+    void prepare (double sampleRate, double windowSeconds = 10.0);
 
     /** Clears the measurement and the filter history. */
     void reset() noexcept;
@@ -22,10 +22,13 @@ public:
     /** Measures numSamples samples of one or two channels; real-time safe. */
     void process (const float* const* channels, int numChannels, int numSamples) noexcept;
 
-    /** Gated integrated loudness in LUFS of everything measured since the last reset, or -infinity when no block has passed the absolute gate. */
+    /** Gated integrated loudness in LUFS over the window, or -infinity when no block in it has passed the absolute gate. */
     float getIntegrated() const noexcept;
 
-    /** Seconds of audio, counted in 100 ms block steps, whose blocks passed the absolute gate. */
+    /** Momentary loudness in LUFS of the latest 400 ms block, or -infinity before one is complete or when silent. */
+    float getMomentary() const noexcept;
+
+    /** Seconds of audio since the last reset, counted in 100 ms block steps, whose blocks passed the absolute gate. */
     double getGatedSeconds() const noexcept { return 0.1 * static_cast<double> (gatedBlocks); }
 
     /** Gated integrated loudness in LUFS of a section of a buffer at the given sample rate. */
@@ -57,10 +60,6 @@ private:
 
     void finishSubBlock() noexcept;
     void filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices);
-    int binFor (double blockEnergy) const noexcept;
-
-    static constexpr float histogramTopLufs = 10.0f;
-    static constexpr float binWidthLu = 0.05f;
 
     std::array<std::array<Biquad, 2>, 2> filters {};
     Biquad shelfTemplate, highPassTemplate;
@@ -70,8 +69,10 @@ private:
     std::array<double, 4> recentSubBlocks {};
     int subBlocksSeen = 0;
     juce::int64 gatedBlocks = 0;
-    std::vector<double> binEnergy;
-    std::vector<juce::int64> binCount;
+    std::vector<double> blocks;
+    size_t blocksHeld = 0;
+    size_t nextBlock = 0;
+    double latestBlock = 0.0;
 };
 
 } // namespace lucky

@@ -16,9 +16,42 @@ double lufsToEnergy (double lufs) noexcept
 {
     return std::pow (10.0, (lufs + 0.691) / 10.0);
 }
+
+bool passesAbsoluteGate (double block) noexcept
+{
+    return block > 0.0 && energyToLufs (block) > LoudnessMeter::absoluteGateLufs;
+}
+
+/** BS.1770 two-stage gating over 400 ms block energies in any order. */
+float gatedLoudness (const double* blocks, size_t count) noexcept
+{
+    double total = 0.0;
+    size_t passing = 0;
+    for (size_t i = 0; i < count; ++i)
+        if (passesAbsoluteGate (blocks[i]))
+        {
+            total += blocks[i];
+            ++passing;
+        }
+
+    if (passing == 0)
+        return -std::numeric_limits<float>::infinity();
+
+    const auto threshold = lufsToEnergy (energyToLufs (total / static_cast<double> (passing)) + LoudnessMeter::relativeGateLu);
+    double gatedTotal = 0.0;
+    size_t gatedCount = 0;
+    for (size_t i = 0; i < count; ++i)
+        if (passesAbsoluteGate (blocks[i]) && blocks[i] > threshold)
+        {
+            gatedTotal += blocks[i];
+            ++gatedCount;
+        }
+
+    return static_cast<float> (energyToLufs (gatedTotal / static_cast<double> (gatedCount)));
+}
 } // namespace
 
-void LoudnessMeter::prepare (double sampleRate)
+void LoudnessMeter::prepare (double sampleRate, double windowSeconds)
 {
     const auto pi = juce::MathConstants<double>::pi;
 
@@ -48,9 +81,7 @@ void LoudnessMeter::prepare (double sampleRate)
     }
 
     subBlockLength = std::max (1, juce::roundToInt (sampleRate * 0.1));
-    const auto bins = static_cast<size_t> ((histogramTopLufs - absoluteGateLufs) / binWidthLu) + 1;
-    binEnergy.assign (bins, 0.0);
-    binCount.assign (bins, 0);
+    blocks.assign (static_cast<size_t> (std::max (1, juce::roundToInt (windowSeconds * 10.0))), 0.0);
     reset();
 }
 
@@ -67,8 +98,10 @@ void LoudnessMeter::reset() noexcept
     recentSubBlocks = {};
     subBlocksSeen = 0;
     gatedBlocks = 0;
-    std::fill (binEnergy.begin(), binEnergy.end(), 0.0);
-    std::fill (binCount.begin(), binCount.end(), 0);
+    blocksHeld = 0;
+    nextBlock = 0;
+    latestBlock = 0.0;
+    std::fill (blocks.begin(), blocks.end(), 0.0);
 }
 
 void LoudnessMeter::process (const float* const* channels, int numChannels, int numSamples) noexcept
@@ -108,57 +141,30 @@ void LoudnessMeter::finishSubBlock() noexcept
     if (subBlocksSeen < 4)
         return;
 
-    const auto blockEnergy = 0.25 * (recentSubBlocks[0] + recentSubBlocks[1] + recentSubBlocks[2] + recentSubBlocks[3]);
-    if (blockEnergy <= 0.0 || energyToLufs (blockEnergy) <= absoluteGateLufs)
-        return;
-
-    const auto bin = static_cast<size_t> (binFor (blockEnergy));
-    binEnergy[bin] += blockEnergy;
-    ++binCount[bin];
-    ++gatedBlocks;
-}
-
-int LoudnessMeter::binFor (double blockEnergy) const noexcept
-{
-    const auto position = (energyToLufs (blockEnergy) - absoluteGateLufs) / binWidthLu;
-    return juce::jlimit (0, static_cast<int> (binCount.size()) - 1, static_cast<int> (position));
+    latestBlock = 0.25 * (recentSubBlocks[0] + recentSubBlocks[1] + recentSubBlocks[2] + recentSubBlocks[3]);
+    blocks[nextBlock] = latestBlock;
+    nextBlock = (nextBlock + 1) % blocks.size();
+    blocksHeld = std::min (blocksHeld + 1, blocks.size());
+    if (passesAbsoluteGate (latestBlock))
+        ++gatedBlocks;
 }
 
 float LoudnessMeter::getIntegrated() const noexcept
 {
-    if (gatedBlocks == 0)
-        return -std::numeric_limits<float>::infinity();
+    return gatedLoudness (blocks.data(), blocksHeld);
+}
 
-    double total = 0.0;
-    for (const auto energy : binEnergy)
-        total += energy;
-
-    const auto threshold = lufsToEnergy (energyToLufs (total / static_cast<double> (gatedBlocks)) + relativeGateLu);
-    const auto firstBin = static_cast<size_t> (binFor (threshold));
-
-    double gatedTotal = 0.0;
-    juce::int64 gatedCount = 0;
-    for (auto bin = firstBin; bin < binCount.size(); ++bin)
-    {
-        gatedTotal += binEnergy[bin];
-        gatedCount += binCount[bin];
-    }
-
-    return static_cast<float> (energyToLufs (gatedTotal / static_cast<double> (gatedCount)));
+float LoudnessMeter::getMomentary() const noexcept
+{
+    return subBlocksSeen >= 4 && latestBlock > 0.0 ? static_cast<float> (energyToLufs (latestBlock)) : -std::numeric_limits<float>::infinity();
 }
 
 float LoudnessMeter::measure (const juce::AudioBuffer<float>& buffer, int startSample, int numSamples, double sampleRate)
 {
-    LoudnessMeter meter;
-    meter.prepare (sampleRate);
-
-    const auto numChannels = std::min (buffer.getNumChannels(), 2);
-    const float* channels[2] {};
-    for (int ch = 0; ch < numChannels; ++ch)
-        channels[ch] = buffer.getReadPointer (ch, startSample);
-
-    meter.process (channels, numChannels, numSamples);
-    return meter.getIntegrated();
+    const juce::AudioBuffer<float> section (const_cast<float* const*> (buffer.getArrayOfReadPointers()), std::min (buffer.getNumChannels(), 2),
+                                            startSample, numSamples);
+    const auto slices = sliceEnergies (section, sampleRate);
+    return integratedFromSlices (slices.data(), static_cast<int> (slices.size()));
 }
 
 std::vector<double> LoudnessMeter::sliceEnergies (const juce::AudioBuffer<float>& buffer, double sampleRate)
@@ -174,32 +180,10 @@ std::vector<double> LoudnessMeter::sliceEnergies (const juce::AudioBuffer<float>
 
 float LoudnessMeter::integratedFromSlices (const double* energies, int count)
 {
-    std::vector<double> blocks;
+    std::vector<double> blockEnergies;
     for (int i = 3; i < count; ++i)
-    {
-        const auto block = 0.25 * (energies[i - 3] + energies[i - 2] + energies[i - 1] + energies[i]);
-        if (block > 0.0 && energyToLufs (block) > absoluteGateLufs)
-            blocks.push_back (block);
-    }
-
-    if (blocks.empty())
-        return -std::numeric_limits<float>::infinity();
-
-    double total = 0.0;
-    for (const auto block : blocks)
-        total += block;
-
-    const auto threshold = lufsToEnergy (energyToLufs (total / static_cast<double> (blocks.size())) + relativeGateLu);
-    double gatedTotal = 0.0;
-    int gatedCount = 0;
-    for (const auto block : blocks)
-        if (block > threshold)
-        {
-            gatedTotal += block;
-            ++gatedCount;
-        }
-
-    return static_cast<float> (energyToLufs (gatedTotal / gatedCount));
+        blockEnergies.push_back (0.25 * (energies[i - 3] + energies[i - 2] + energies[i - 1] + energies[i]));
+    return gatedLoudness (blockEnergies.data(), blockEnergies.size());
 }
 
 } // namespace lucky

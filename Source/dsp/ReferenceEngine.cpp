@@ -28,6 +28,14 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
         gain.reset (rate, gainRampSeconds);
         gain.setCurrentAndTargetValue (0.0f);
     }
+    for (auto& ready : readiness)
+    {
+        ready.reset (rate, readyFadeSeconds);
+        ready.setCurrentAndTargetValue (0.0f);
+    }
+    for (auto& applied : appliedGainsDb)
+        applied.store (silentLufs);
+    mixMomentary.store (silentLufs);
     for (auto& loudness : referenceLoudness)
         loudness.store (silentLufs);
 
@@ -81,12 +89,14 @@ void ReferenceEngine::followTransport (const Transport& transport, int numSample
 
 void ReferenceEngine::updateMatching (const Controls& controls, const std::array<const ReferencePlayer::Source*, numSlots>& sources) noexcept
 {
+    const auto hadEstimate = std::isfinite (mixLoudness.load());
     const auto measured = mixMeter.getGatedSeconds();
     if (measured >= minimumMixSeconds && measured > lastMeasuredSeconds)
     {
         lastMeasuredSeconds = measured;
         mixLoudness.store (mixMeter.getIntegrated());
     }
+    const auto firstEstimate = ! hadEstimate && std::isfinite (mixLoudness.load());
 
     const auto matchChanged = controls.match != wasMatching;
     wasMatching = controls.match;
@@ -103,10 +113,12 @@ void ReferenceEngine::updateMatching (const Controls& controls, const std::array
         else if (std::isfinite (mix) && std::isfinite (loudness))
             target = juce::jlimit (-maximumGainDb, maximumGainDb, mix - loudness);
 
-        if (matchChanged || referenceFaders[slot].isSilent())
+        if (matchChanged || firstEstimate || referenceFaders[slot].isSilent())
             gainsDb[slot].setCurrentAndTargetValue (target);
         else
             gainsDb[slot].setTargetValue (target);
+
+        readiness[slot].setTargetValue (! controls.match || std::isfinite (mix) ? 1.0f : 0.0f);
     }
 }
 
@@ -123,6 +135,7 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
     followTransport (transport, n);
     if (transport.isPlaying)
         mixMeter.process (buffer.getArrayOfReadPointers(), 2, n);
+    mixMomentary.store (transport.isPlaying ? mixMeter.getMomentary() : silentLufs);
     updateMatching (controls, sources);
 
     const auto selected = static_cast<size_t> (juce::jlimit (0, numSlots - 1, controls.slot));
@@ -136,9 +149,14 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
 
     if (mixFader.isFull() && referencesSilent)
     {
-        if (transport.isPlaying)
-            for (auto& player : players)
-                player.skip (n);
+        for (size_t slot = 0; slot < numSlots; ++slot)
+        {
+            gainsDb[slot].skip (n);
+            readiness[slot].skip (n);
+            if (transport.isPlaying)
+                players[slot].skip (n);
+        }
+        publishGains();
         return;
     }
 
@@ -155,10 +173,12 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
     {
         auto& fader = referenceFaders[slot];
         auto& gain = gainsDb[slot];
+        auto& ready = readiness[slot];
         if (fader.isSilent() || ! transport.isPlaying)
         {
             fader.level.skip (n);
             gain.skip (n);
+            ready.skip (n);
             if (transport.isPlaying)
                 players[slot].skip (n);
             continue;
@@ -172,11 +192,22 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
             players[slot].render (refLeft, refRight, chunk);
             for (int i = 0; i < chunk; ++i)
             {
-                const auto amplitude = fader.next() * juce::Decibels::decibelsToGain (gain.getNextValue());
+                const auto amplitude = fader.next() * ready.getNextValue() * juce::Decibels::decibelsToGain (gain.getNextValue());
                 left[offset + i] += refLeft[i] * amplitude;
                 right[offset + i] += refRight[i] * amplitude;
             }
         }
+    }
+
+    publishGains();
+}
+
+void ReferenceEngine::publishGains() noexcept
+{
+    for (size_t slot = 0; slot < numSlots; ++slot)
+    {
+        const auto ready = readiness[slot].getCurrentValue();
+        appliedGainsDb[slot].store (ready > 0.0f ? gainsDb[slot].getCurrentValue() + juce::Decibels::gainToDecibels (ready, -100.0f) : silentLufs);
     }
 }
 

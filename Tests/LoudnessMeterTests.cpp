@@ -53,6 +53,17 @@ public:
             expectLufs (sineSequence ({ { -26.0f, 20.0 }, { -20.0f, 20.1 }, { -26.0f, 20.0 } }, rate), rate, -23.0f, "case 5");
         }
 
+        beginTest ("Streaming loudness covers the last ten seconds, and momentary the last 400 ms");
+        {
+            const auto signal = sineSequence ({ { -30.0f, 30.0 }, { -18.0f, 10.5 } }, 48000.0);
+            lucky::LoudnessMeter meter;
+            meter.prepare (48000.0);
+            const float* channels[] { signal.getReadPointer (0), signal.getReadPointer (1) };
+            meter.process (channels, 2, signal.getNumSamples());
+            expectWithinAbsoluteError (meter.getIntegrated(), -18.0f, 0.1f);
+            expectWithinAbsoluteError (meter.getMomentary(), -18.0f, 0.1f);
+        }
+
         beginTest ("Silence has no loudness");
         {
             juce::AudioBuffer<float> silence (2, 48000 * 5);

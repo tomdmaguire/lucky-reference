@@ -104,7 +104,7 @@ public:
             setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
             const auto output = run (*processor, head, mix);
             expect (! identical (output, mix));
-            expect (output.getMagnitude (0, blockSize * 4, blockSize) > 0.05f);
+            expect (output.getMagnitude (0, output.getNumSamples() - blockSize * 4, blockSize) > 0.05f);
         }
 
         beginTest ("Exports always contain the mix");
