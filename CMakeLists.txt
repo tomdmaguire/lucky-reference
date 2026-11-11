@@ -57,6 +57,7 @@ target_sources(LuckyReference PRIVATE
     Source/ui/SlotRow.cpp
     Source/ui/SourceSwitch.cpp
     Source/ui/LoudnessRings.cpp
+    Source/ui/RadarRipples.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}
 )
 

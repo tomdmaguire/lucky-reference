@@ -20,6 +20,12 @@ public:
     /** Advances the knob animation by one UI frame. */
     void tick();
 
+    /** Centre of the knob in this component's coordinates, following its animation. */
+    juce::Point<float> getKnobCentre() const;
+
+    /** Where the knob's centre comes to rest for the side that's on. */
+    juce::Point<float> getRestingKnobCentre() const;
+
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
 

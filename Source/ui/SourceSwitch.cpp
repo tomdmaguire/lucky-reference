@@ -37,6 +37,19 @@ void SourceSwitch::tick()
     repaint();
 }
 
+juce::Point<float> SourceSwitch::getKnobCentre() const
+{
+    const auto bounds = getLocalBounds().toFloat().reduced (1.0f);
+    const auto half = bounds.getWidth() * 0.5f;
+    return { bounds.getX() + half * (0.5f + juce::jlimit (0.0f, 1.0f, knob)), bounds.getCentreY() };
+}
+
+juce::Point<float> SourceSwitch::getRestingKnobCentre() const
+{
+    const auto bounds = getLocalBounds().toFloat().reduced (1.0f);
+    return { bounds.getX() + bounds.getWidth() * (reference ? 0.75f : 0.25f), bounds.getCentreY() };
+}
+
 void SourceSwitch::paint (juce::Graphics& g)
 {
     const auto bounds = getLocalBounds().toFloat().reduced (1.0f);

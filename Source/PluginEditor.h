@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "ui/LookAndFeel.h"
 #include "ui/LoudnessRings.h"
+#include "ui/RadarRipples.h"
 #include "ui/Settings.h"
 #include "ui/SlotRow.h"
 #include "ui/SourceSwitch.h"
@@ -41,7 +42,20 @@ private:
 
     LuckyReferenceProcessor& owner;
     std::array<std::unique_ptr<lucky::SlotRow>, LuckyReferenceProcessor::numSlots> rows;
+    /** A transparent layer that paints through a callback, so text can sit above the ripples. */
+    struct PaintLayer final : juce::Component
+    {
+        PaintLayer() { setInterceptsMouseClicks (false, false); }
+        void paint (juce::Graphics& g) override { if (onPaint) onPaint (g); }
+        std::function<void (juce::Graphics&)> onPaint;
+    };
+
+    void applyRingStyle();
+
+    juce::SharedResourcePointer<lucky::Settings> settings;
+    lucky::RadarRipples radar;
     lucky::LoudnessRings rings;
+    PaintLayer readout;
     lucky::SourceSwitch sourceSwitch;
     juce::TextButton matchButton { "LEVEL MATCH" };
     juce::DrawableButton menuButton { "Menu", juce::DrawableButton::ImageFitted };

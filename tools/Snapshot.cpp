@@ -70,7 +70,7 @@ void setParameter (LuckyReferenceProcessor& processor, const juce::String& id, f
     parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
 }
 
-/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch". */
+/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to leave ripples). */
 int snapshot (const juce::File& output, const juce::String& mode)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -121,6 +121,16 @@ int snapshot (const juce::File& output, const juce::String& mode)
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor->createEditorAndMakeActive());
     pumpMessages (1.0);
+
+    if (mode == "radar")
+    {
+        for (const auto& [reference, slot] : { std::pair { 1.0f, 0.0f }, std::pair { 1.0f, 1.0f }, std::pair { 0.0f, 1.0f }, std::pair { 1.0f, 2.0f } })
+        {
+            setParameter (*processor, LuckyReferenceProcessor::slotId, slot);
+            setParameter (*processor, LuckyReferenceProcessor::referenceId, reference);
+            pumpMessages (0.35);
+        }
+    }
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 2.0f);
     output.deleteFile();
     juce::FileOutputStream stream (output);
@@ -136,7 +146,7 @@ int main (int argc, char** argv)
     juce::ScopedJuceInitialiser_GUI juce;
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch>\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar>\n";
         return 1;
     }
     return snapshot (juce::File (juce::String (argv[1])), juce::String (argv[2]));
