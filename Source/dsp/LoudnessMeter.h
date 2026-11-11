@@ -31,6 +31,12 @@ public:
     /** Gated integrated loudness in LUFS of a section of a buffer at the given sample rate. */
     static float measure (const juce::AudioBuffer<float>& buffer, int startSample, int numSamples, double sampleRate);
 
+    /** K-weighted mean-square energy of each consecutive 100 ms slice of a buffer (a partial last slice is dropped). */
+    static std::vector<double> sliceEnergies (const juce::AudioBuffer<float>& buffer, double sampleRate);
+
+    /** Gated integrated loudness in LUFS of consecutive 100 ms slice energies, or -infinity when too short or silent. */
+    static float integratedFromSlices (const double* energies, int count);
+
     static constexpr float absoluteGateLufs = -70.0f;
     static constexpr float relativeGateLu = -10.0f;
 
@@ -50,13 +56,14 @@ private:
     };
 
     void finishSubBlock() noexcept;
+    void filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices);
     int binFor (double blockEnergy) const noexcept;
 
     static constexpr float histogramTopLufs = 10.0f;
     static constexpr float binWidthLu = 0.05f;
 
     std::array<std::array<Biquad, 2>, 2> filters {};
-    std::array<Biquad, 2> shelfTemplate {}, highPassTemplate {};
+    Biquad shelfTemplate, highPassTemplate;
     int subBlockLength = 4800;
     int subBlockFill = 0;
     double subBlockSum = 0.0;

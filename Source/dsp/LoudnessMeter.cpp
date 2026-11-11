@@ -28,7 +28,7 @@ void LoudnessMeter::prepare (double sampleRate)
         const auto vh = std::pow (10.0, gainDb / 20.0);
         const auto vb = std::pow (vh, 0.4996667741545416);
         const auto a0 = 1.0 + k / q + k * k;
-        auto& shelf = shelfTemplate[0];
+        auto& shelf = shelfTemplate;
         shelf.b0 = (vh + vb * k / q + k * k) / a0;
         shelf.b1 = 2.0 * (k * k - vh) / a0;
         shelf.b2 = (vh - vb * k / q + k * k) / a0;
@@ -39,7 +39,7 @@ void LoudnessMeter::prepare (double sampleRate)
         const auto f0 = 38.13547087602444, q = 0.5003270373238773;
         const auto k = std::tan (pi * f0 / sampleRate);
         const auto a0 = 1.0 + k / q + k * k;
-        auto& highPass = highPassTemplate[0];
+        auto& highPass = highPassTemplate;
         highPass.b0 = 1.0;
         highPass.b1 = -2.0;
         highPass.b2 = 1.0;
@@ -58,8 +58,8 @@ void LoudnessMeter::reset() noexcept
 {
     for (auto& channel : filters)
     {
-        channel[0] = shelfTemplate[0];
-        channel[1] = highPassTemplate[0];
+        channel[0] = shelfTemplate;
+        channel[1] = highPassTemplate;
     }
 
     subBlockFill = 0;
@@ -73,6 +73,11 @@ void LoudnessMeter::reset() noexcept
 
 void LoudnessMeter::process (const float* const* channels, int numChannels, int numSamples) noexcept
 {
+    filterInto (channels, numChannels, numSamples, nullptr);
+}
+
+void LoudnessMeter::filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices)
+{
     numChannels = std::min (numChannels, 2);
 
     for (int i = 0; i < numSamples; ++i)
@@ -85,7 +90,11 @@ void LoudnessMeter::process (const float* const* channels, int numChannels, int 
         }
 
         if (++subBlockFill == subBlockLength)
+        {
+            if (slices != nullptr)
+                slices->push_back (subBlockSum / static_cast<double> (subBlockLength));
             finishSubBlock();
+        }
     }
 }
 
@@ -150,6 +159,47 @@ float LoudnessMeter::measure (const juce::AudioBuffer<float>& buffer, int startS
 
     meter.process (channels, numChannels, numSamples);
     return meter.getIntegrated();
+}
+
+std::vector<double> LoudnessMeter::sliceEnergies (const juce::AudioBuffer<float>& buffer, double sampleRate)
+{
+    LoudnessMeter meter;
+    meter.prepare (sampleRate);
+
+    std::vector<double> slices;
+    slices.reserve (static_cast<size_t> (buffer.getNumSamples() / meter.subBlockLength + 1));
+    meter.filterInto (buffer.getArrayOfReadPointers(), buffer.getNumChannels(), buffer.getNumSamples(), &slices);
+    return slices;
+}
+
+float LoudnessMeter::integratedFromSlices (const double* energies, int count)
+{
+    std::vector<double> blocks;
+    for (int i = 3; i < count; ++i)
+    {
+        const auto block = 0.25 * (energies[i - 3] + energies[i - 2] + energies[i - 1] + energies[i]);
+        if (block > 0.0 && energyToLufs (block) > absoluteGateLufs)
+            blocks.push_back (block);
+    }
+
+    if (blocks.empty())
+        return -std::numeric_limits<float>::infinity();
+
+    double total = 0.0;
+    for (const auto block : blocks)
+        total += block;
+
+    const auto threshold = lufsToEnergy (energyToLufs (total / static_cast<double> (blocks.size())) + relativeGateLu);
+    double gatedTotal = 0.0;
+    int gatedCount = 0;
+    for (const auto block : blocks)
+        if (block > threshold)
+        {
+            gatedTotal += block;
+            ++gatedCount;
+        }
+
+    return static_cast<float> (energyToLufs (gatedTotal / gatedCount));
 }
 
 } // namespace lucky
