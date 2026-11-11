@@ -1,6 +1,6 @@
 # Lucky Reference: project overview
 
-JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 reference plugin for the master track, a sibling of Lucky Seven (`../lucky-seven`). Licensed AGPLv3. The agreed v1 behaviour is in `docs/spec.md`.
+JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 reference plugin for the master track, a sibling of Lucky Seven (`../lucky-seven`). Licensed AGPLv3. The agreed v1 behaviour is in `docs/spec.md`. `docs/index.html` (+ `docs/assets/`) is the GitHub Pages promo site, styled like Lucky Seven's; screenshots come from `LuckyReferenceSnapshot` (`reference`, `loaded`).
 
 ## Layout
 - `Source/PluginProcessor.*`: parameters `reference` (the A/B switch, first so it is easy to put on Ableton's device panel), `slot` (1-3), `match`. Slot file paths and loops live as `Slot` children of the APVTS state, loops in seconds so they survive a sample-rate change. Loads files through `ReferenceLoader` and, for a newly loaded file, sets the loop to its loudest 16 s. Offline renders (`isNonRealtime`) return the mix untouched.

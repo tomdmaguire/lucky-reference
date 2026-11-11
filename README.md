@@ -2,7 +2,17 @@
 
 Compare your mix against reference tracks at matched loudness. Lucky Reference sits last on your master track: load up to three references, choose the section of each to compare, and flip between your mix and a reference with one switch.
 
-A sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven). Work in progress; see [`docs/spec.md`](docs/spec.md).
+**[Website and download](https://tomdmaguire.github.io/lucky-reference/)** · a sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven) · product spec in [`docs/spec.md`](docs/spec.md)
+
+![Lucky Reference with three references loaded, reference 2 playing and the readout saying the mix is 4.0 dB quieter](docs/assets/reference.png)
+
+## Install
+
+Download [**Lucky-Reference.pkg**](https://github.com/tomdmaguire/lucky-reference/releases/latest/download/Lucky-Reference.pkg) and open it. It installs the VST3 (Apple Silicon and Intel) into `/Library/Audio/Plug-Ins/VST3`.
+
+Lucky Reference isn't signed with a paid Apple developer certificate, so macOS won't open the installer the first time. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+
+A zip for installing by hand is also on the [releases page](https://github.com/tomdmaguire/lucky-reference/releases/latest); its `INSTALL.txt` explains the steps.
 
 ## Features
 
@@ -10,7 +20,6 @@ A sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven). Work in 
 - **A loop for each reference**: a new reference loops its loudest 16 seconds. Drag across the waveform to choose another section, drag a loop edge to adjust it, double-click to play the whole track.
 - **One A/B switch** in the middle, with a short crossfade. Press ← for your mix, → for the reference and 1/2/3 to choose a slot. It's also the first plugin parameter, so in Ableton you can add it to the device panel (Configure) and MIDI- or key-map it.
 - **Loudness matching**: the reference is turned to your mix's BS.1770 loudness, measured over the last 10 seconds you've played and the reference's loop. The readout says how your mix compares ("3.4 dB quieter") with both LUFS values; turn LEVEL MATCH off to hear the real gap.
-- **Radar ripples**, borrowed from Lucky Seven's map: each hit in what you're hearing sends a faint circle out from the switch, in the mix or reference colour.
 - **Format badge** next to each reference's name, with the bitrate for lossy files ("MP3 · 192 kbps"), so you know when you're comparing against a lower-quality file.
 - **Keyboard**: left/right arrows switch between mix and reference, 1/2/3 pick a reference; the keys are shown under the switch.
 - **Window size** from 75% to 200%: drag the corner or pick a size from the **⋯** menu.

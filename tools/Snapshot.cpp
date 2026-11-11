@@ -85,9 +85,9 @@ int snapshot (const juce::File& output, const juce::String& mode)
         folder.createDirectory();
         const juce::File files[] { folder.getChildFile ("Midnight Drive - Master.wav"), folder.getChildFile ("Glass Houses (Club Mix).wav"),
                                    folder.getChildFile ("Northern Lights.wav") };
-        writeWav (files[0], fakeSong ({ -30, -18, -14, -20, -12, -12, -24 }, 24.0, 1));
-        writeWav (files[1], fakeSong ({ -24, -16, -10, -10, -26, -12, -9, -9, -30 }, 20.0, 2));
-        writeWav (files[2], fakeSong ({ -20, -14, -14, -22, -13, -13, -16 }, 26.0, 3));
+        writeWav (files[0], fakeSong ({ -20, -8, -4, -10, -2, -2, -14 }, 24.0, 1));
+        writeWav (files[1], fakeSong ({ -14, -6, 0, 0, -16, -2, 1, 1, -20 }, 20.0, 2));
+        writeWav (files[2], fakeSong ({ -10, -4, -4, -12, -3, -3, -6 }, 26.0, 3));
         for (int i = 0; i < 3; ++i)
             processor->loadFile (i, files[i]);
 
@@ -108,7 +108,7 @@ int snapshot (const juce::File& output, const juce::String& mode)
 
     if (mode != "measuring" && mode != "empty")
     {
-        const auto mix = fakeSong ({ -19 }, 6.0, 4);
+        const auto mix = fakeSong ({ -3 }, 6.0, 4);
         juce::MidiBuffer midi;
         juce::AudioBuffer<float> work (mix);
         for (int start = 0; start + blockSize <= work.getNumSamples(); start += blockSize)
