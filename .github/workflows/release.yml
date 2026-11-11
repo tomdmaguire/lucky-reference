@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build plugin and tests
+        run: cmake --build build --target LuckyReference_VST3 LuckyReferenceTests LuckyReferenceProcessorTests
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          artefacts="build/LuckyReference_artefacts/Release"
+          package="Lucky-Reference-${GITHUB_REF_NAME}-macOS"
+          mkdir -p "dist/$package"
+          cp -R "$artefacts/VST3/Lucky Reference.vst3" "dist/$package/"
+          codesign --force --deep --sign - "dist/$package/Lucky Reference.vst3"
+          cp README.md CHANGELOG.md LICENSE "dist/$package/"
+          cp Resources/Fonts/OFL.txt "dist/$package/Barlow-OFL.txt"
+          cp packaging/INSTALL.txt "dist/$package/INSTALL.txt"
+          (cd dist && ditto -c -k --keepParent "$package" "$package.zip")
+          packaging/build-pkg.sh "${GITHUB_REF_NAME#v}" "dist/$package/Lucky Reference.vst3" "dist/Lucky-Reference.pkg"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist/Lucky-Reference.pkg" "dist/Lucky-Reference-${GITHUB_REF_NAME}-macOS.zip" \
+            --title "Lucky Reference $GITHUB_REF_NAME" \
+            --notes-file CHANGELOG.md

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Lucky Reference __VERSION__</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+    <domains enable_localSystem="true"/>
+    <allowed-os-versions>
+        <os-version min="13.0"/>
+    </allowed-os-versions>
+    <choices-outline>
+        <line choice="vst3"/>
+    </choices-outline>
+    <choice id="vst3" title="VST3 plug-in" description="Installs Lucky Reference.vst3 into /Library/Audio/Plug-Ins/VST3.">
+        <pkg-ref id="com.luckylabs.luckyreference.vst3"/>
+    </choice>
+    <pkg-ref id="com.luckylabs.luckyreference.vst3" version="__VERSION__" onConclusion="none">LuckyReference-VST3.pkg</pkg-ref>
+</installer-gui-script>

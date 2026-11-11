@@ -129,3 +129,11 @@ target_compile_definitions(LuckyReferenceLoadBenchmark PRIVATE JUCE_WEB_BROWSER=
 target_link_libraries(LuckyReferenceLoadBenchmark
     PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
+
+juce_add_console_app(LuckyReferenceBench PRODUCT_NAME "Lucky Reference Bench")
+target_sources(LuckyReferenceBench PRIVATE tools/Benchmark.cpp ${LUCKY_REFERENCE_CORE_SOURCES})
+target_include_directories(LuckyReferenceBench PRIVATE Source)
+target_compile_definitions(LuckyReferenceBench PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(LuckyReferenceBench
+    PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
+    PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)

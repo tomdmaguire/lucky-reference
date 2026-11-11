@@ -1,0 +1,22 @@
+Installing Lucky Reference
+==========================
+
+The easiest way is the installer: download Lucky-Reference.pkg from the
+project's latest release and open it. These steps are for installing by hand
+from this zip instead.
+
+1. Copy "Lucky Reference.vst3" into ~/Library/Audio/Plug-Ins/VST3
+   (in Finder, press Cmd+Shift+G and paste the folder path to open it).
+
+2. Unblock the plugin. Lucky Reference is free and not signed by an Apple
+   developer account, so macOS blocks it the first time. Open Terminal and run:
+
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"
+
+   Alternatively, if your DAW reports the plugin as blocked, open
+   System Settings > Privacy & Security and click "Allow Anyway".
+
+3. Rescan plug-ins in your DAW's settings, or restart it.
+
+4. Put Lucky Reference last on your master track, after any limiter or
+   mastering chain, and drop up to three reference tracks onto its slots.
