@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "Settings.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <optional>
 
@@ -40,6 +41,10 @@ public:
 private:
     enum class Drag { none, newLoop, startEdge, endEdge };
 
+    /** This slot's folder, else another slot's (usually the project's), else the last folder used, else Music. */
+    juce::File browseStartFolder() const;
+    void loadAndRemember (const juce::File& file);
+
     juce::Rectangle<float> waveformArea() const;
     double secondsAt (float x) const;
     float xAt (double seconds) const;
@@ -54,6 +59,7 @@ private:
     double dragAnchorSeconds = 0.0;
     std::optional<LoopRegion> draft;
     std::unique_ptr<juce::FileChooser> chooser;
+    juce::SharedResourcePointer<Settings> settings;
 };
 
 } // namespace lucky

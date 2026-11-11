@@ -280,17 +280,36 @@ void SlotRow::showMenu()
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this));
 }
 
+juce::File SlotRow::browseStartFolder() const
+{
+    auto candidates = juce::Array<juce::File> { processor.getFile (slot) };
+    for (int other = 0; other < LuckyReferenceProcessor::numSlots; ++other)
+        if (other != slot)
+            candidates.add (processor.getFile (other));
+
+    for (const auto& file : candidates)
+        if (file != juce::File() && file.getParentDirectory().isDirectory())
+            return file.getParentDirectory();
+
+    if (const auto last = settings->getLastReferenceFolder(); last.isDirectory())
+        return last;
+    return juce::File::getSpecialLocation (juce::File::userMusicDirectory);
+}
+
+void SlotRow::loadAndRemember (const juce::File& file)
+{
+    settings->setLastReferenceFolder (file.getParentDirectory());
+    processor.loadFile (slot, file);
+}
+
 void SlotRow::browse()
 {
-    const auto current = processor.getFile (slot);
-    const auto start = current.getParentDirectory().isDirectory() ? current.getParentDirectory()
-                                                                   : juce::File::getSpecialLocation (juce::File::userMusicDirectory);
-    chooser = std::make_unique<juce::FileChooser> ("Choose reference " + juce::String (slot + 1), start, audioExtensions);
+    chooser = std::make_unique<juce::FileChooser> ("Choose reference " + juce::String (slot + 1), browseStartFolder(), audioExtensions);
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                           [this] (const juce::FileChooser& finished)
                           {
                               if (const auto file = finished.getResult(); file.existsAsFile())
-                                  processor.loadFile (slot, file);
+                                  loadAndRemember (file);
                           });
 }
 
@@ -314,7 +333,7 @@ void SlotRow::fileDragExit (const juce::StringArray&)
 void SlotRow::filesDropped (const juce::StringArray& files, int, int)
 {
     dropHover = false;
-    processor.loadFile (slot, juce::File (files[0]));
+    loadAndRemember (juce::File (files[0]));
     if (onSelect)
         onSelect();
 }

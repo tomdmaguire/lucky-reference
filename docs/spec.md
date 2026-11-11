@@ -33,6 +33,7 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - Files are decoded on a background thread, resampled to the host rate, and held in memory as stereo. Mono files are duplicated to both channels; files with more than two channels use the first two.
 - Maximum length: 15 minutes.
 - Each slot has a colour from the Lucky family palette: slot 1 is Lucky Seven's gold, slot 2 pink, slot 3 green.
+- Browsing for a reference starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
 - References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
 - Slots can be cleared and replaced.
 
