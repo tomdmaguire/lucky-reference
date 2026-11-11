@@ -157,9 +157,12 @@ void LuckyReferenceView::syncControls()
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
     matchButton.setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::slotColour (selectedSlot));
 
-    const auto colour = referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
     if (controlsSynced && (referenceOn != sourceSwitchShowsReference || selectedSlot != shownSlot))
-        radar.ripple (sourceSwitch.getPosition().toFloat() + sourceSwitch.getRestingKnobCentre() - radar.getPosition().toFloat(), colour);
+    {
+        const auto fromReferenceSide = referenceOn != sourceSwitchShowsReference ? referenceOn : true;
+        const auto colour = fromReferenceSide ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
+        radar.ripple (sourceSwitch.getPosition().toFloat() + sourceSwitch.getSideCentre (fromReferenceSide) - radar.getPosition().toFloat(), colour);
+    }
     controlsSynced = true;
     sourceSwitchShowsReference = referenceOn;
     shownSlot = selectedSlot;

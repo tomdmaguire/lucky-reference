@@ -24,3 +24,10 @@ Carried over from Lucky Seven where they apply.
 ## User-facing numbers need plain words
 - **Mistake:** "Ref −3.4 dB" was correct but hard to read once on screen: it didn't say what was compared or which way.
 - **Rule:** label what is compared with what ("YOUR MIX VS REF 2") and say the direction in words ("3.4 dB quieter"), with the raw values as detail.
+## Feedback belongs to what changed
+- **Mistake:** picking a reference while on the mix sent a white ripple from the MIX side, and LEVEL MATCH took the mix colour, though it only affects the reference.
+- **Rule:** a ripple, glow or colour comes from the control that just changed, in that thing's colour. A control that only affects one thing always wears that thing's colour.
+
+## Shortcut hints must look like keys
+- **Mistake:** "1 2 3 SLOTS" read as labels, not number keys, and used an internal word.
+- **Rule:** draw shortcuts as keycaps and label them with the product's own words ("reference", not "slot").

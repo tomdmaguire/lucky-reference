@@ -23,8 +23,8 @@ public:
     /** Centre of the knob in this component's coordinates, following its animation. */
     juce::Point<float> getKnobCentre() const;
 
-    /** Where the knob's centre comes to rest for the side that's on. */
-    juce::Point<float> getRestingKnobCentre() const;
+    /** The centre of the mix side (false) or the reference side (true), where the knob comes to rest. */
+    juce::Point<float> getSideCentre (bool referenceSide) const;
 
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;

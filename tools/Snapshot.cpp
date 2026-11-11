@@ -124,7 +124,7 @@ int snapshot (const juce::File& output, const juce::String& mode)
 
     if (mode == "radar")
     {
-        for (const auto& [reference, slot] : { std::pair { 1.0f, 0.0f }, std::pair { 1.0f, 1.0f }, std::pair { 0.0f, 1.0f }, std::pair { 1.0f, 2.0f } })
+        for (const auto& [reference, slot] : { std::pair { 1.0f, 0.0f }, std::pair { 1.0f, 1.0f }, std::pair { 0.0f, 1.0f }, std::pair { 0.0f, 2.0f } })
         {
             setParameter (*processor, LuckyReferenceProcessor::slotId, slot);
             setParameter (*processor, LuckyReferenceProcessor::referenceId, reference);

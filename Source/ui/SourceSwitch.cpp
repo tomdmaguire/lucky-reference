@@ -44,10 +44,10 @@ juce::Point<float> SourceSwitch::getKnobCentre() const
     return { bounds.getX() + half * (0.5f + juce::jlimit (0.0f, 1.0f, knob)), bounds.getCentreY() };
 }
 
-juce::Point<float> SourceSwitch::getRestingKnobCentre() const
+juce::Point<float> SourceSwitch::getSideCentre (bool referenceSide) const
 {
     const auto bounds = getLocalBounds().toFloat().reduced (1.0f);
-    return { bounds.getX() + bounds.getWidth() * (reference ? 0.75f : 0.25f), bounds.getCentreY() };
+    return { bounds.getX() + bounds.getWidth() * (referenceSide ? 0.75f : 0.25f), bounds.getCentreY() };
 }
 
 void SourceSwitch::paint (juce::Graphics& g)
