@@ -49,6 +49,7 @@ set(LUCKY_REFERENCE_CORE_SOURCES
     Source/ref/ReferenceLoader.cpp
     Source/dsp/ReferencePlayer.cpp
     Source/dsp/ReferenceEngine.cpp
+    Source/library/ReferenceLibrary.cpp
 )
 
 target_sources(LuckyReference PRIVATE
@@ -87,6 +88,7 @@ target_sources(LuckyReferenceTests PRIVATE
     Tests/LoudnessMeterTests.cpp
     Tests/ReferenceTrackTests.cpp
     Tests/ReferenceEngineTests.cpp
+    Tests/LibraryTests.cpp
     ${LUCKY_REFERENCE_CORE_SOURCES}
 )
 
