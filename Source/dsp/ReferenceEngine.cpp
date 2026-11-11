@@ -136,6 +136,7 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
     if (transport.isPlaying)
         mixMeter.process (buffer.getArrayOfReadPointers(), 2, n);
     mixMomentary.store (transport.isPlaying ? mixMeter.getMomentary() : silentLufs);
+    playing.store (transport.isPlaying);
     updateMatching (controls, sources);
 
     const auto selected = static_cast<size_t> (juce::jlimit (0, numSlots - 1, controls.slot));

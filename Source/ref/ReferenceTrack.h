@@ -35,6 +35,9 @@ public:
     /** Gated integrated loudness in LUFS of the given loop, or -infinity when it is silent. */
     float getLoudness (const LoopRegion& loop) const;
 
+    /** Momentary loudness in LUFS of the 400 ms before a sample position, or -infinity when silent. */
+    float getMomentaryLoudness (juce::int64 position) const;
+
     /** The loudest stretch of the given length, as a loop; unset when the track is no longer than that. */
     LoopRegion findLoudestSection (double seconds) const;
 

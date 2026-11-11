@@ -1,5 +1,6 @@
 #include "ReferenceTrack.h"
 #include "Resampler.h"
+#include <limits>
 #include "dsp/LoudnessMeter.h"
 
 namespace lucky
@@ -72,6 +73,18 @@ float ReferenceTrack::getLoudness (const LoopRegion& loop) const
     const auto first = std::min (sliceCount, static_cast<int> (std::round (static_cast<double> (range.getStart()) / sliceLength)));
     const auto last = std::min (sliceCount, static_cast<int> (std::round (static_cast<double> (range.getEnd()) / sliceLength)));
     return LoudnessMeter::integratedFromSlices (slices.data() + first, std::max (0, last - first));
+}
+
+float ReferenceTrack::getMomentaryLoudness (juce::int64 position) const
+{
+    const auto sliceLength = static_cast<juce::int64> (juce::roundToInt (rate * 0.1));
+    const auto end = std::min (static_cast<juce::int64> (slices.size()), position / std::max<juce::int64> (1, sliceLength));
+    if (end < 4)
+        return -std::numeric_limits<float>::infinity();
+
+    const auto first = static_cast<size_t> (end - 4);
+    const auto energy = 0.25 * (slices[first] + slices[first + 1] + slices[first + 2] + slices[first + 3]);
+    return energy > 0.0 ? static_cast<float> (-0.691 + 10.0 * std::log10 (energy)) : -std::numeric_limits<float>::infinity();
 }
 
 LoopRegion ReferenceTrack::findLoudestSection (double seconds) const

@@ -63,6 +63,7 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
         addAndMakeVisible (*rows[static_cast<size_t> (i)]);
     }
 
+    addAndMakeVisible (rings);
     sourceSwitch.onToggle = [this] (bool on) { referenceAttachment.setValueAsCompleteGesture (on ? 1.0f : 0.0f); };
     addAndMakeVisible (sourceSwitch);
 
@@ -102,8 +103,24 @@ juce::Colour LuckyReferenceView::targetAccent() const
     return referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
 }
 
+float LuckyReferenceView::referenceMomentary() const
+{
+    const auto& engine = owner.getEngine();
+    const auto track = owner.getTrack (selectedSlot);
+    if (track == nullptr || ! engine.isPlaying())
+        return -std::numeric_limits<float>::infinity();
+    return track->getMomentaryLoudness (engine.getPosition (selectedSlot)) + engine.getAppliedGainDb (selectedSlot);
+}
+
 void LuckyReferenceView::syncControls()
 {
+    const auto colour = referenceOn ? lucky::theme::slotColour (selectedSlot) : lucky::theme::mixColour;
+    if (controlsSynced && (referenceOn != sourceSwitchShowsReference || selectedSlot != shownSlot))
+        rings.ripple (colour);
+    controlsSynced = true;
+    sourceSwitchShowsReference = referenceOn;
+    shownSlot = selectedSlot;
+
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
         rows[static_cast<size_t> (i)]->setState (i == selectedSlot, referenceOn && i == selectedSlot);
@@ -141,6 +158,9 @@ void LuckyReferenceView::timerCallback()
         shownGainDb = gainShown ? shownGainDb + (difference - shownGainDb) * 0.2f : difference;
         gainShown = true;
     }
+
+    rings.setLevels (engine.getMixMomentary(), referenceMomentary(), lucky::theme::slotColour (selectedSlot), referenceOn);
+    rings.tick();
 
     for (auto& row : rows)
         row->repaint();
@@ -187,12 +207,13 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
     const auto reference = engine.getReferenceLoudness (selectedSlot);
     const auto matching = parameter (owner, LuckyReferenceProcessor::matchId).getValue() > 0.5f;
 
-    juce::String headline, detail;
+    const auto label = "YOUR MIX VS REF " + juce::String (selectedSlot + 1);
+    juce::String headline, detail, note;
     auto headlineColour = theme::text;
     if (track == nullptr)
     {
         headline = "No reference";
-        detail = "Load a reference into slot " + juce::String (selectedSlot + 1);
+        detail = "Drop a file onto slot " + juce::String (selectedSlot + 1);
         headlineColour = theme::textDim;
     }
     else if (! std::isfinite (mix))
@@ -203,19 +224,29 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
     }
     else
     {
-        headline = "Ref " + signedDb (shownGainDb, "dB");
+        const auto rounded = std::round (shownGainDb * 10.0f) / 10.0f;
+        headline = std::abs (rounded) < 0.1f ? juce::String ("Same loudness")
+                                             : juce::String (std::abs (rounded), 1) + (rounded < 0.0f ? " dB quieter" : " dB louder");
         detail = "Mix " + signedDb (mix, "LUFS") + "  " + middleDot + "  Ref " + signedDb (reference, "LUFS");
         if (! matching)
-            headlineColour = theme::textDim;
+            note = "Levels not matched";
     }
 
-    const auto block = area.withSizeKeepingCentre (area.getWidth(), 60.0f);
+    auto block = area.withSizeKeepingCentre (area.getWidth(), 92.0f);
+    g.setColour (theme::textDim);
+    g.setFont (theme::labelFont (11.0f));
+    g.drawText (label, block.removeFromTop (16.0f), juce::Justification::centredLeft);
     g.setColour (headlineColour);
     g.setFont (theme::labelFont (26.0f).withStyle ("Bold").withKerningFactor (0.02f));
-    g.drawText (headline, block.withHeight (34.0f), juce::Justification::centredLeft);
+    g.drawText (headline, block.removeFromTop (38.0f), juce::Justification::centredLeft);
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (12.0f));
-    g.drawText (detail, block.withTrimmedTop (38.0f), juce::Justification::centredLeft);
+    g.drawText (detail, block.removeFromTop (18.0f), juce::Justification::centredLeft);
+    if (note.isNotEmpty())
+    {
+        g.setColour (accent);
+        g.drawText (note, block.removeFromTop (18.0f), juce::Justification::centredLeft);
+    }
 }
 
 void LuckyReferenceView::resized()
@@ -235,6 +266,8 @@ void LuckyReferenceView::resized()
     stage.removeFromLeft (sideColumnWidth);
     matchButton.setBounds (stage.removeFromRight (sideColumnWidth).removeFromRight (140).withSizeKeepingCentre (140, 34));
     sourceSwitch.setBounds (stage.withSizeKeepingCentre (220, 52));
+    rings.setBounds (stage);
+    rings.setCore (sourceSwitch.getBounds().toFloat() - rings.getPosition().toFloat());
 }
 
 void LuckyReferenceView::showMenu()

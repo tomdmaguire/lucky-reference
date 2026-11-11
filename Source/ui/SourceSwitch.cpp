@@ -25,13 +25,15 @@ void SourceSwitch::setState (bool isReference, const juce::String& referenceLabe
 void SourceSwitch::tick()
 {
     const auto target = reference ? 1.0f : 0.0f;
-    if (std::abs (knob - target) < 0.001f)
+    if (std::abs (knob - target) < 0.001f && std::abs (velocity) < 0.001f)
     {
         knob = target;
+        velocity = 0.0f;
         return;
     }
 
-    knob += (target - knob) * 0.3f;
+    velocity = (velocity + (target - knob) * 0.22f) * 0.62f;
+    knob += velocity;
     repaint();
 }
 
@@ -46,15 +48,19 @@ void SourceSwitch::paint (juce::Graphics& g)
     g.drawRoundedRectangle (bounds, radius, 1.0f);
 
     const auto half = bounds.getWidth() * 0.5f;
-    const auto knobBounds = bounds.withWidth (half).translated (half * knob, 0.0f).reduced (3.0f);
-    g.setColour (theme::mixColour.interpolatedWith (colour, knob));
+    const auto shown = juce::jlimit (0.0f, 1.0f, knob);
+    const auto stretch = std::abs (velocity) * half * 0.6f;
+    const auto knobBounds = bounds.withWidth (half + stretch).translated (half * knob - (velocity > 0.0f ? stretch : 0.0f), 0.0f)
+                                .reduced (3.0f)
+                                .constrainedWithin (bounds.reduced (3.0f));
+    g.setColour (theme::mixColour.interpolatedWith (colour, shown));
     g.fillRoundedRectangle (knobBounds, knobBounds.getHeight() * 0.5f);
 
     g.setFont (theme::labelFont (14.0f).withStyle ("Bold"));
     const auto left = bounds.withWidth (half), right = left.translated (half, 0.0f);
-    g.setColour (theme::text.interpolatedWith (theme::background, 1.0f - knob));
+    g.setColour (theme::text.interpolatedWith (theme::background, 1.0f - shown));
     g.drawText ("MIX", left, juce::Justification::centred);
-    g.setColour (theme::text.interpolatedWith (theme::background, knob));
+    g.setColour (theme::text.interpolatedWith (theme::background, shown));
     g.drawText (label, right, juce::Justification::centred);
 }
 

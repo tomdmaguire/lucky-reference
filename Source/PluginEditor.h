@@ -2,6 +2,7 @@
 
 #include "PluginProcessor.h"
 #include "ui/LookAndFeel.h"
+#include "ui/LoudnessRings.h"
 #include "ui/Settings.h"
 #include "ui/SlotRow.h"
 #include "ui/SourceSwitch.h"
@@ -34,9 +35,11 @@ private:
     void showMenu();
     void paintReadout (juce::Graphics&, juce::Rectangle<float> area);
     juce::Colour targetAccent() const;
+    float referenceMomentary() const;
 
     LuckyReferenceProcessor& owner;
     std::array<std::unique_ptr<lucky::SlotRow>, LuckyReferenceProcessor::numSlots> rows;
+    lucky::LoudnessRings rings;
     lucky::SourceSwitch sourceSwitch;
     juce::TextButton matchButton { "LEVEL MATCH" };
     juce::DrawableButton menuButton { "Menu", juce::DrawableButton::ImageFitted };
@@ -44,6 +47,9 @@ private:
     juce::ButtonParameterAttachment matchAttachment;
     bool referenceOn = false;
     int selectedSlot = 0;
+    bool controlsSynced = false;
+    bool sourceSwitchShowsReference = false;
+    int shownSlot = 0;
     juce::Colour accent;
     float shownGainDb = 0.0f;
     bool gainShown = false;

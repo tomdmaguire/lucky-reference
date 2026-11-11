@@ -26,6 +26,7 @@ public:
 private:
     bool reference = false;
     float knob = 0.0f;
+    float velocity = 0.0f;
     juce::String label { "REF 1" };
     juce::Colour colour;
 };

@@ -65,6 +65,9 @@ public:
     /** Gain in dB being applied to a slot's reference, including the fade-in before the first estimate (-infinity while silent). */
     float getAppliedGainDb (int slot) const noexcept { return appliedGainsDb[static_cast<size_t> (slot)].load(); }
 
+    /** True while the host transport is playing. */
+    bool isPlaying() const noexcept { return playing.load(); }
+
     /** True until the mix has been measured long enough to match against. */
     bool isMeasuring() const noexcept { return ! std::isfinite (getMixLoudness()); }
 
@@ -99,6 +102,7 @@ private:
     std::array<std::atomic<float>, numSlots> appliedGainsDb;
     bool wasMatching = true;
     bool wasPlaying = false;
+    std::atomic<bool> playing { false };
     std::optional<juce::int64> expectedTime;
     juce::AudioBuffer<float> scratch;
 };
