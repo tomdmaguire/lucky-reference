@@ -21,5 +21,5 @@ Carried over from Lucky Seven where they apply.
 - **Rule:** when a gain depends on a measurement that isn't ready, keep the signal silent (or at a safe level) and fade it in once the measurement exists.
 
 ## User-facing numbers need plain words
-- **Mistake:** "Ref −3.4 dB" was correct but meaningless to the user once on screen.
+- **Mistake:** "Ref −3.4 dB" was correct but hard to read once on screen: it didn't say what was compared or which way.
 - **Rule:** label what is compared with what ("YOUR MIX VS REF 2") and say the direction in words ("3.4 dB quieter"), with the raw values as detail.
