@@ -183,7 +183,7 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
 
 /** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
     leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
-    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
+    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played), "library-replace" (asking before replacing a loaded reference) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -284,6 +284,23 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         for (int attempt = 0; attempt < 300 && processor->getLibrary().isReading(); ++attempt)
             pumpMessages (0.02);
         pumpMessages (0.3);
+        if (mode == "library-replace")
+        {
+            std::function<lucky::LibraryPanel* (juce::Component&)> findPanel = [&] (juce::Component& parent) -> lucky::LibraryPanel*
+            {
+                for (auto* child : parent.getChildren())
+                {
+                    if (auto* panel = dynamic_cast<lucky::LibraryPanel*> (child))
+                        return panel;
+                    if (auto* found = findPanel (*child))
+                        return found;
+                }
+                return nullptr;
+            };
+            if (auto* panel = findPanel (*editor))
+                panel->chooseFile (1, processor->getLibrary().getRoot().getChildFile ("Concrete Garden.flac"));
+            pumpMessages (0.2);
+        }
         if (mode == "closest")
         {
             playFor (*processor, head, shapedSong (30, 900.0, 0.0, false), 90.0);
@@ -314,14 +331,14 @@ int main (int argc, char** argv)
 {
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|closest|closest-waiting|outside> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|library-replace|closest|closest-waiting|outside> [settleSeconds]\n";
         return 1;
     }
 
     const auto library = snapshotFolder ("Library"), state = snapshotFolder ("State");
     snapshotFolder ({}).deleteRecursively();
     library.createDirectory();
-    if (juce::String (argv[2]) == "library")
+    if (juce::String (argv[2]).startsWith ("library") && juce::String (argv[2]) != "library-empty")
         fillLibrary (library, state);
     if (juce::String (argv[2]).startsWith ("closest"))
         fillShapedLibrary (library);

@@ -53,6 +53,9 @@ public:
     /** Redraws the slot buttons after the slots change. */
     void slotsChanged() { list.repaint(); }
 
+    /** Loads a file into a slot, as the row's 1 2 3 buttons do: replacing a different track asks first. */
+    void chooseFile (int slot, const juce::File& file);
+
     /** Copies files into the library in the background, then rescans. */
     void addFiles (const juce::Array<juce::File>& files);
 
@@ -87,7 +90,11 @@ private:
         offers UPDATE; the list itself never reorders on its own. */
     void checkTopMatches();
     juce::String hintText() const;
+    /** Loads a row into a slot, first asking to replace a different track already there. */
     void chooseRow (int row, int slot);
+    void load (int slot, const juce::File& file);
+    void askToReplace (int slot, const juce::File& file);
+    void closeReplaceCard (bool replace);
     /** Loads a row into the first empty slot, or explains that every slot is full. */
     void chooseRowIntoEmptySlot (int row);
     void showNotice (const juce::String& text);
@@ -112,6 +119,23 @@ private:
     juce::TextButton nameOrderButton { "A-Z" }, closestOrderButton { "CLOSEST" }, updateButton { "UPDATE" };
     juce::ListBox list { "Library", this };
     std::unique_ptr<juce::FileChooser> chooser;
+
+    /** Covers the list to confirm replacing a loaded track, so a reference that isn't in the library isn't lost by
+        accident. Enter replaces, Escape cancels. */
+    struct ReplaceCard final : juce::Component
+    {
+        ReplaceCard();
+        void show (const juce::String& title, const juce::String& detail, juce::Colour slotColour);
+        void paint (juce::Graphics&) override;
+        void resized() override;
+
+        juce::String title, detail;
+        juce::TextButton replaceButton { "REPLACE" }, cancelButton { "CANCEL" };
+    };
+
+    ReplaceCard replaceCard;
+    int pendingSlot = -1;
+    juce::File pendingFile;
 };
 
 } // namespace lucky

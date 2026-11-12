@@ -126,6 +126,10 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     list.addMouseListener (this, true);
     addAndMakeVisible (list);
 
+    replaceCard.replaceButton.onClick = [this] { closeReplaceCard (true); };
+    replaceCard.cancelButton.onClick = [this] { closeReplaceCard (false); };
+    addChildComponent (replaceCard);
+
     setWantsKeyboardFocus (true);
     library.addChangeListener (this);
     refresh();
@@ -152,6 +156,8 @@ void LibraryPanel::opened()
 
 void LibraryPanel::closed()
 {
+    if (replaceCard.isVisible())
+        closeReplaceCard (false);
     stopTimer();
 }
 
@@ -325,13 +331,100 @@ void LibraryPanel::updateVisibility()
 
 void LibraryPanel::chooseRow (int row, int slot)
 {
-    if (juce::isPositiveAndBelow (row, static_cast<int> (shown.size())) && juce::isPositiveAndBelow (slot, numSlots) && onChoose)
+    if (! juce::isPositiveAndBelow (row, static_cast<int> (shown.size())) || ! juce::isPositiveAndBelow (slot, numSlots))
+        return;
+
+    chooseFile (slot, shown[static_cast<size_t> (row)].file);
+}
+
+void LibraryPanel::chooseFile (int slot, const juce::File& file)
+{
+    const auto current = slotFile != nullptr ? slotFile (slot) : juce::File();
+    if (current != juce::File() && current != file)
+        askToReplace (slot, file);
+    else
+        load (slot, file);
+}
+
+void LibraryPanel::load (int slot, const juce::File& file)
+{
+    if (onChoose)
+        onChoose (slot, file);
+    showNotice ("Loaded into reference " + juce::String (slot + 1));
+    list.repaint();
+}
+
+void LibraryPanel::askToReplace (int slot, const juce::File& file)
+{
+    const auto current = slotFile (slot);
+    pendingSlot = slot;
+    pendingFile = file;
+    const auto quote = [] (const juce::String& text) { return juce::String::fromUTF8 ("\xe2\x80\x9c") + text + juce::String::fromUTF8 ("\xe2\x80\x9d"); };
+    replaceCard.show ("Replace " + quote (current.getFileNameWithoutExtension()) + " in reference " + juce::String (slot + 1) + "?",
+                      library.contains (current) ? juce::String ("It stays in your library.")
+                                                 : juce::String ("It isn't in your library, so you'd have to find the file again to get it back."),
+                      theme::slotColour (slot));
+    replaceCard.setBounds (list.getBounds());
+    grabKeyboardFocus();
+}
+
+void LibraryPanel::closeReplaceCard (bool replace)
+{
+    replaceCard.setVisible (false);
+    if (replace && pendingSlot >= 0)
+        load (pendingSlot, pendingFile);
+    pendingSlot = -1;
+    grabKeyboardFocus();
+}
+
+LibraryPanel::ReplaceCard::ReplaceCard()
+{
+    replaceButton.getProperties().set ("outline", true);
+    replaceButton.getProperties().set ("primary", true);
+    cancelButton.getProperties().set ("outline", true);
+    for (auto* button : { &replaceButton, &cancelButton })
     {
-        const auto& entry = shown[static_cast<size_t> (row)];
-        onChoose (slot, entry.file);
-        showNotice ("Loaded into reference " + juce::String (slot + 1));
-        list.repaint();
+        button->setWantsKeyboardFocus (false);
+        addAndMakeVisible (*button);
     }
+    setInterceptsMouseClicks (true, true);
+}
+
+void LibraryPanel::ReplaceCard::show (const juce::String& newTitle, const juce::String& newDetail, juce::Colour slotColour)
+{
+    title = newTitle;
+    detail = newDetail;
+    replaceButton.setColour (juce::Slider::rotarySliderFillColourId, slotColour);
+    setVisible (true);
+    toFront (false);
+    repaint();
+}
+
+void LibraryPanel::ReplaceCard::paint (juce::Graphics& g)
+{
+    g.setColour (theme::strip.withAlpha (0.85f));
+    g.fillRect (getLocalBounds());
+    const auto card = getLocalBounds().withSizeKeepingCentre (460, 150).toFloat();
+    g.setColour (theme::panelRaised);
+    g.fillRoundedRectangle (card, 6.0f);
+    g.setColour (theme::outline.brighter (0.2f));
+    g.drawRoundedRectangle (card.reduced (0.5f), 6.0f, 1.0f);
+
+    auto text = card.reduced (24.0f, 20.0f);
+    g.setColour (theme::text);
+    g.setFont (theme::labelFont (15.0f).withStyle ("Bold"));
+    g.drawFittedText (title, text.removeFromTop (22.0f).toNearestInt(), juce::Justification::centredLeft, 1);
+    g.setColour (theme::textDim);
+    g.setFont (theme::labelFont (12.5f));
+    g.drawFittedText (detail, text.removeFromTop (40.0f).toNearestInt(), juce::Justification::centredLeft, 2);
+}
+
+void LibraryPanel::ReplaceCard::resized()
+{
+    auto buttons = getLocalBounds().withSizeKeepingCentre (460, 150).reduced (24, 20).removeFromBottom (30);
+    replaceButton.setBounds (buttons.removeFromRight (110));
+    buttons.removeFromRight (10);
+    cancelButton.setBounds (buttons.removeFromRight (100));
 }
 
 void LibraryPanel::chooseRowIntoEmptySlot (int row)
@@ -504,6 +597,16 @@ bool LibraryPanel::keyPressed (const juce::KeyPress& key, juce::Component* origi
 
 bool LibraryPanel::keyPressed (const juce::KeyPress& key)
 {
+    if (replaceCard.isVisible())
+    {
+        if (key == juce::KeyPress::returnKey || key == juce::KeyPress::escapeKey)
+        {
+            closeReplaceCard (key == juce::KeyPress::returnKey);
+            return true;
+        }
+        return false;
+    }
+
     if (key == juce::KeyPress::escapeKey)
     {
         if (onClose)
