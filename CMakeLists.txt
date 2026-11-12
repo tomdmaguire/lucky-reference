@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(LuckyReference VERSION 0.1.0 LANGUAGES C CXX)
+project(LuckyReference VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +17,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+option(LUCKY_REFERENCE_INSTALL_AFTER_BUILD "Copy the VST3 into ~/Library/Audio/Plug-Ins/VST3 after building" ON)
+
 juce_add_plugin(LuckyReference
     COMPANY_NAME "Lucky Labs"
     BUNDLE_ID com.luckylabs.luckyreference
@@ -30,7 +32,7 @@ juce_add_plugin(LuckyReference
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     VST3_CATEGORIES Fx Analyzer
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${LUCKY_REFERENCE_INSTALL_AFTER_BUILD}
 )
 
 juce_add_binary_data(LuckyReferenceFonts
