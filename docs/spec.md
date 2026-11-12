@@ -78,14 +78,14 @@ Measure: **ITU-R BS.1770 gated integrated loudness** (LUFS), the same measure on
 - Gain changes ramp over 1 second, so the gain settles smoothly instead of riding the music.
 - Matching starts once 1.5 seconds of non-silent mix have been measured. Before the first estimate of a session, a selected reference stays silent and the readout shows "Measuring" while playing ("Waiting for your mix" until you press play); it then fades in at the matched level, so it never plays at its full, unmatched level. After that, the last estimate is held across stops and jumps until the new section has been measured.
 - Gain is clamped to ±24 dB. A silent reference loop is not matched.
-- A **LEVEL MATCH** toggle turns matching off, so you can hear the real loudness gap (useful for checking a master).
+- A **LEVEL MATCH** on/off switch (a small cousin of the MIX | REF switch, in the reference's colour when on) turns matching off, so you can hear the real loudness gap (useful for checking a master).
 
 ### 6. Loudness readout
 
-- Plain words: a small label **"YOUR MIX VS REF 2"**, then a large **"3.4 dB quieter"**, "2.1 dB louder" or "Same loudness" (under 0.1 dB).
-- Small, underneath: both absolute values, e.g. "Mix −11.2 LUFS · Ref −7.8 LUFS".
-- The large number rolls to its new value as the measurement settles.
-- With LEVEL MATCH off, the same difference is shown with "Levels not matched".
+- The readout always describes the real, unmatched levels, so it never changes with LEVEL MATCH. A small label **"YOUR MIX VS REF 2"**, then two lines of equal weight: **"Mix −11.2 LUFS · Ref −7.8 LUFS"** (no slot number next to the values, so numbers don't run together) and **"Your mix is 3.4 dB quieter"**, "louder", or "Same loudness as Ref 2" (under 0.1 dB).
+- While LEVEL MATCH is on, small helper text underneath says "Compared with Ref 2's original loudness", since what you hear is matched but the numbers are not.
+- The difference rolls to its new value as the measurement settles.
+- Before any measurement: "Waiting for your mix / Press play in your DAW" while stopped, "Measuring... / Keep playing for a few seconds" while playing.
 
 ### 7. Export safety
 
@@ -129,9 +129,9 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 │ ┌ 2 ▁▂▃▅▆▇▆▅▄▃▂▁▂▃[▅▆▇▇▆]▅▃▂▁     Artist – Track        ┐ │
 │ ┌ 3        drop a reference here                        ┐ │
 ├──────────────────────────────────────────────────────────┤
-│ YOUR MIX VS REF 1     .-~~~~~~~~~~-.                     │
-│ 3.4 dB quieter       (  ( MIX|REF )  )     [● LEVEL MATCH]│
-│ Mix −11.2 · Ref −7.8  '-~~~~~~~~~~-'                     │
+│ YOUR MIX VS REF 1        .-~~~~~~~~~-.                   │
+│ Mix −11.2 · Ref −7.8 LUFS ( (MIX|REF) )  (●) LEVEL MATCH  │
+│ Your mix is 3.4 dB quieter '-~~~~~~~~~-'                  │
 │              [←][→] SWITCH   [1][2][3] REFERENCE         │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -139,8 +139,8 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 - Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the REFS and LIBRARY tabs and the three-dot menu (window size, library folders, placement hints, remove all references). The logo returns to REFS.
 - Three outlined slot rows (100 px at 100% scale): waveform with coloured loop region, a playhead on the selected slot only (the others keep time silently), file name, a format badge, loop length.
 - The format badge makes a lossy reference obvious: "MP3 · 192 kbps" (bitrate from the file header) for MP3, AAC, Ogg and Opus, and lossy M4A; just "WAV", "AIFF", "FLAC" or lossless "M4A" (ALAC) otherwise. A lossy file has a softer top end, which is worth knowing before matching your mix to it.
-- The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout headline, the switch and LEVEL MATCH share one centre line.
-- LEVEL MATCH only affects the reference, so it always takes the selected reference's colour, as does the "Levels not matched" note.
+- The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout's two main lines, the switch and LEVEL MATCH share one centre line.
+- LEVEL MATCH only affects the reference, so its switch takes the selected reference's colour when on.
 - **Keyboard:** ← plays the mix, → plays the reference, 1/2/3 choose the slot, Delete removes the selected slot's reference. The shortcut hint hides while the library is shown. The window takes keyboard focus when shown and when clicked; buttons never take it. The host's own key mapping of the `reference` parameter also works.
 
 ### Visual delight

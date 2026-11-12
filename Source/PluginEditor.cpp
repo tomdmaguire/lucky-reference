@@ -15,7 +15,7 @@ constexpr int gutter = 24;
 constexpr int rowHeight = 100;
 constexpr int hintHeight = 28;
 constexpr int rowGap = 12;
-constexpr int sideColumnWidth = 230;
+constexpr int sideColumnWidth = 300;
 const juce::String minusSign = juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"));
 const juce::String middleDot = juce::String (juce::CharPointer_UTF8 ("\xc2\xb7"));
 
@@ -57,7 +57,7 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
       libraryPanel (processor.getLibrary()),
       referenceAttachment (parameter (processor, LuckyReferenceProcessor::referenceId), [this] (float value) { referenceOn = value > 0.5f; syncControls(); }),
       slotAttachment (parameter (processor, LuckyReferenceProcessor::slotId), [this] (float value) { selectedSlot = juce::roundToInt (value); syncControls(); }),
-      matchAttachment (*dynamic_cast<juce::AudioParameterBool*> (&parameter (processor, LuckyReferenceProcessor::matchId)), matchButton)
+      matchAttachment (parameter (processor, LuckyReferenceProcessor::matchId), [this] (float value) { matchSwitch.setOn (value > 0.5f); repaint(); })
 {
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
     {
@@ -114,13 +114,14 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     };
     addAndMakeVisible (sourceSwitch);
 
-    matchButton.setClickingTogglesState (true);
-    matchButton.getProperties().set ("outline", true);
-    matchButton.getProperties().set ("toggle", true);
-    matchButton.setWantsKeyboardFocus (false);
-    matchButton.setTooltip ("On: the reference is turned to your mix's loudness, for a fair comparison. "
+    matchSwitch.setTooltip ("On: the reference is turned to your mix's loudness, for a fair comparison. "
                             "Off: it plays at its real level, so you can hear the loudness gap.");
-    addAndMakeVisible (matchButton);
+    matchSwitch.onToggle = [this] (bool on)
+    {
+        grabKeyboardFocus();
+        matchAttachment.setValueAsCompleteGesture (on ? 1.0f : 0.0f);
+    };
+    addAndMakeVisible (matchSwitch);
 
     const auto idleIcon = makeMenuIcon (lucky::theme::textDim);
     const auto hoverIcon = makeMenuIcon (lucky::theme::text);
@@ -213,7 +214,7 @@ float LuckyReferenceView::referenceFast() const
 void LuckyReferenceView::syncControls()
 {
     sourceSwitch.setState (referenceOn, "REF " + juce::String (selectedSlot + 1), lucky::theme::slotColour (selectedSlot));
-    matchButton.setColour (juce::Slider::rotarySliderFillColourId, lucky::theme::slotColour (selectedSlot));
+    matchSwitch.setColour (lucky::theme::slotColour (selectedSlot));
 
     if (controlsSynced && (referenceOn != sourceSwitchShowsReference || selectedSlot != shownSlot))
     {
@@ -358,46 +359,46 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
     const auto reference = engine.getReferenceLoudness (selectedSlot);
     const auto matching = parameter (owner, LuckyReferenceProcessor::matchId).getValue() > 0.5f;
 
+    const auto refName = "Ref " + juce::String (selectedSlot + 1);
     const auto label = "YOUR MIX VS REF " + juce::String (selectedSlot + 1);
-    juce::String headline, detail, note;
-    auto headlineColour = theme::text;
+    juce::String levels, difference, helper;
+    auto mainColour = theme::text;
     if (track == nullptr)
     {
-        headline = "No reference";
-        detail = "Drop or choose a track for reference " + juce::String (selectedSlot + 1);
-        headlineColour = theme::textDim;
+        levels = "No reference";
+        difference = "Drop or choose a track for reference " + juce::String (selectedSlot + 1);
+        mainColour = theme::textDim;
     }
     else if (! std::isfinite (mix))
     {
-        headline = engine.isPlaying() ? "Measuring..." : "Waiting for your mix";
-        detail = engine.isPlaying() ? "Keep playing for a few seconds" : "Press play in your DAW";
-        headlineColour = theme::textDim;
+        levels = engine.isPlaying() ? "Measuring..." : "Waiting for your mix";
+        difference = engine.isPlaying() ? "Keep playing for a few seconds" : "Press play in your DAW";
+        mainColour = theme::textDim;
     }
     else
     {
         const auto rounded = std::round (shownGainDb * 10.0f) / 10.0f;
-        headline = std::abs (rounded) < 0.1f ? juce::String ("Same loudness")
-                                             : juce::String (std::abs (rounded), 1) + (rounded < 0.0f ? " dB quieter" : " dB louder");
-        detail = "Mix " + signedDb (mix, "LUFS") + "  " + middleDot + "  Ref " + signedDb (reference, "LUFS");
-        if (! matching)
-            note = "Levels not matched";
+        levels = "Mix " + signedDb (mix, "LUFS") + "  " + middleDot + "  Ref " + signedDb (reference, "LUFS");
+        difference = std::abs (rounded) < 0.1f ? "Same loudness as " + refName
+                                               : "Your mix is " + juce::String (std::abs (rounded), 1) + (rounded < 0.0f ? " dB quieter" : " dB louder");
+        if (matching)
+            helper = "Compared with " + refName + "'s original loudness";
     }
 
-    const auto headlineRow = area.withSizeKeepingCentre (area.getWidth(), 38.0f);
+    constexpr float lineHeight = 22.0f;
+    auto block = area.withSizeKeepingCentre (area.getWidth(), lineHeight * 2.0f);
     g.setColour (theme::textDim);
     g.setFont (theme::labelFont (11.0f));
-    g.drawText (label, headlineRow.translated (0.0f, -16.0f).withHeight (16.0f), juce::Justification::centredLeft);
-    g.setColour (headlineColour);
-    g.setFont (theme::labelFont (26.0f).withStyle ("Bold").withKerningFactor (0.02f));
-    g.drawText (headline, headlineRow, juce::Justification::centredLeft);
-    auto block = area.withTop (headlineRow.getBottom());
-    g.setColour (theme::textDim);
-    g.setFont (theme::labelFont (12.0f));
-    g.drawText (detail, block.removeFromTop (18.0f), juce::Justification::centredLeft);
-    if (note.isNotEmpty())
+    g.drawText (label, block.withY (block.getY() - 22.0f).withHeight (16.0f), juce::Justification::centredLeft);
+    g.setColour (mainColour);
+    g.setFont (theme::labelFont (16.0f).withStyle ("Bold"));
+    g.drawText (levels, block.removeFromTop (lineHeight), juce::Justification::centredLeft);
+    g.drawText (difference, block.removeFromTop (lineHeight), juce::Justification::centredLeft);
+    if (helper.isNotEmpty())
     {
-        g.setColour (theme::slotColour (selectedSlot));
-        g.drawText (note, block.removeFromTop (18.0f), juce::Justification::centredLeft);
+        g.setColour (theme::textDim.withAlpha (0.6f));
+        g.setFont (theme::labelFont (10.5f));
+        g.drawText (helper, area.withTop (block.getBottom() + 6.0f).withHeight (16.0f), juce::Justification::centredLeft);
     }
 }
 
@@ -420,7 +421,8 @@ void LuckyReferenceView::resized()
 
     auto stage = getLocalBounds().withTop (stageTop()).reduced (gutter, 0).withTrimmedBottom (hintHeight);
     readout.setBounds (stage.removeFromLeft (sideColumnWidth));
-    matchButton.setBounds (stage.removeFromRight (sideColumnWidth).removeFromRight (140).withSizeKeepingCentre (140, 34));
+    const auto matchColumn = stage.removeFromRight (sideColumnWidth).removeFromRight (160);
+    matchSwitch.setBounds (matchColumn.withSizeKeepingCentre (matchSwitch.getIdealWidth(), 28));
     sourceSwitch.setBounds (stage.withSizeKeepingCentre (220, 52));
     radar.setBounds (getLocalBounds().withTop (stageTop() + 1));
 }

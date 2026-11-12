@@ -2,6 +2,7 @@
 
 #include "PluginProcessor.h"
 #include "ui/LibraryPanel.h"
+#include "ui/SmallSwitch.h"
 #include "ui/LookAndFeel.h"
 #include "ui/RadarRipples.h"
 #include "ui/Settings.h"
@@ -67,10 +68,9 @@ private:
     lucky::RadarRipples radar;
     PaintLayer readout;
     lucky::SourceSwitch sourceSwitch;
-    juce::TextButton matchButton { "LEVEL MATCH" };
+    lucky::SmallSwitch matchSwitch { "LEVEL MATCH" };
     juce::DrawableButton menuButton { "Menu", juce::DrawableButton::ImageFitted };
-    juce::ParameterAttachment referenceAttachment, slotAttachment;
-    juce::ButtonParameterAttachment matchAttachment;
+    juce::ParameterAttachment referenceAttachment, slotAttachment, matchAttachment;
     bool referenceOn = false;
     int selectedSlot = 0;
     bool controlsSynced = false;
