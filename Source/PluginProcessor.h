@@ -76,6 +76,10 @@ public:
     /** Seconds of the mix heard so far for its profile (capped at the window). */
     double getMixProfileSeconds() const noexcept { return mixProfileSeconds; }
 
+    /** Seconds of the mix heard while playing since the plug-in started, never capped, so the library can tell when
+        enough new audio has played to be worth ranking again. */
+    double getMixHeardSeconds() const noexcept { return mixHeardSeconds; }
+
     /** Empties a slot. */
     void clearSlot (int slot);
 
@@ -126,7 +130,7 @@ private:
     std::unique_ptr<lucky::TonalAnalyser> mixAnalyser;
     std::vector<float> mixTapScratch;
     std::optional<lucky::TonalProfile> mixProfile;
-    double mixProfileSeconds = 0.0;
+    double mixProfileSeconds = 0.0, mixHeardSeconds = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LuckyReferenceProcessor)
 };

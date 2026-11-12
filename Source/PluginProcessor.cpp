@@ -204,6 +204,8 @@ void LuckyReferenceProcessor::updateMixProfile()
     if (received == 0)
         return;
 
+    mixHeardSeconds += received / rate;
+
     mixProfileSeconds = mixAnalyser->getGatedSeconds();
     mixProfile = mixAnalyser->getProfile();
 }

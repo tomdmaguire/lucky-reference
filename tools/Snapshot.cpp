@@ -284,6 +284,12 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         for (int attempt = 0; attempt < 300 && processor->getLibrary().isReading(); ++attempt)
             pumpMessages (0.02);
         pumpMessages (0.3);
+        if (mode == "closest")
+        {
+            playFor (*processor, head, fakeSong ({ -3, -2, -4 }, 5.0, 4), 14.0);
+            processor->updateMixProfile();
+            pumpMessages (0.6);
+        }
     }
 
     if (mode == "playing")
