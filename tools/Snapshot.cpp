@@ -183,7 +183,7 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
 
 /** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
     leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
-    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played), "library-replace" (asking before replacing a loaded reference) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
+    "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played), "closest-update" (offering UPDATE after the mix changed), "library-replace" (asking before replacing a loaded reference) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
 {
     std::unique_ptr<LuckyReferenceProcessor> processor (dynamic_cast<LuckyReferenceProcessor*> (createPluginFilter()));
@@ -243,7 +243,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         }
     }
 
-    if (mode == "closest")
+    if (mode == "closest" || mode == "closest-update")
     {
         const auto mix = fakeSong ({ -3, -2, -4 }, 5.0, 4);
         for (int pass = 0; pass < 2; ++pass)
@@ -301,7 +301,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
                 panel->chooseFile (1, processor->getLibrary().getRoot().getChildFile ("Concrete Garden.flac"));
             pumpMessages (0.2);
         }
-        if (mode == "closest")
+        if (mode == "closest-update")
         {
             playFor (*processor, head, shapedSong (30, 900.0, 0.0, false), 90.0);
             processor->updateMixProfile();
@@ -331,7 +331,7 @@ int main (int argc, char** argv)
 {
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|library-replace|closest|closest-waiting|outside> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|library-replace|closest|closest-waiting|closest-update|outside> [settleSeconds]\n";
         return 1;
     }
 

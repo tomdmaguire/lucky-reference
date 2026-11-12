@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lucky Reference</title>
-<meta name="description" content="Lucky Reference: a free reference plugin for macOS. Flip between your mix and up to three reference tracks with one switch, at matched loudness, without leaving your master track.">
+<meta name="description" content="Lucky Reference: a free reference plugin for macOS. Flip between your mix and up to three reference tracks with one switch, at matched loudness, and find the references in your library that sound closest to your mix.">
 <meta property="og:title" content="Lucky Reference">
 <meta property="og:description" content="A/B your mix against the records you love, at the same loudness. Free for macOS, VST3.">
 <meta property="og:image" content="https://tomdmaguire.github.io/lucky-reference/assets/reference.png">
@@ -110,6 +110,11 @@
   .manual summary { cursor: pointer; color: var(--text); font-family: var(--display); font-weight: 600; letter-spacing: 0.03em; font-size: 17px; }
   .manual[open] summary { margin-bottom: 8px; }
   .manual p { margin: 8px 0; }
+  .points { margin: 18px 0; padding-left: 20px; color: var(--dim); }
+  .points li { margin: 0 0 10px; }
+  .points strong, .library-copy p strong { color: var(--text); font-weight: 600; }
+  .library-copy p { color: var(--dim); margin: 0; }
+  .library-copy .aside { font-size: 15px; }
   .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px; align-items: center; }
   .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; color: var(--dim); }
   .notes h3 { font-family: var(--display); font-weight: 600; font-size: 19px; letter-spacing: 0.03em; color: var(--text); margin: 0 0 4px; }
@@ -137,6 +142,7 @@
     <a class="brand" href="#top"><img src="assets/logo.svg" alt=""><span>LUCKY REFERENCE</span></a>
     <nav aria-label="Sections">
       <a class="optional" href="#features">Features</a>
+      <a class="optional" href="#library">Library</a>
       <a class="optional" href="#how">How to use</a>
       <a href="#install">Install</a>
       <a href="https://github.com/tomdmaguire/lucky-reference">GitHub</a>
@@ -175,8 +181,8 @@
     </div>
 
     <figure class="shot">
-      <img src="assets/reference.png" width="1800" height="1200" alt="Lucky Reference with three reference tracks loaded, each with a looped section highlighted in its colour. Reference 2 is playing, with rings rippling out from the switch, and the readout says your mix is 4.0 dB quieter: mix −18.3 LUFS, reference −14.3 LUFS.">
-      <figcaption>Three references, each looping the section you want to compare. Reference 2 is playing at your mix's loudness, and the readout shows your mix is 4 dB quieter.</figcaption>
+      <img src="assets/reference.png" width="1800" height="1200" alt="Lucky Reference with three reference tracks loaded, each with a looped section highlighted in its colour. Reference 2 is playing with level match on, rings rippling out from the switch, and the readout shows mix −18.3 LUFS, reference −14.3 LUFS: your mix is 4.0 dB quieter.">
+      <figcaption>Three references, each looping the section you want to compare. Reference 2 is playing at your mix's loudness, and the readout shows your mix is really 4 dB quieter.</figcaption>
     </figure>
   </div>
 
@@ -187,7 +193,7 @@
       <div class="features">
         <div class="feature" style="--dot: var(--gold)">
           <h3>A fair comparison</h3>
-          <p>Louder always sounds better, so the reference is turned to your mix's loudness (BS.1770, over the last 10 seconds you've played) before you hear it. Turn Level Match off to hear the real gap.</p>
+          <p>Louder always sounds better, so the reference is turned to your mix's loudness (BS.1770, over the last 10 seconds you've played) before you hear it. Flip the Level Match switch off to hear the real gap.</p>
         </div>
         <div class="feature" style="--dot: var(--pink)">
           <h3>One switch</h3>
@@ -199,12 +205,34 @@
         </div>
         <div class="feature" style="--dot: var(--blue)">
           <h3>A number for mastering</h3>
-          <p>The readout says how your mix compares in plain words, such as &ldquo;3.4&nbsp;dB quieter&rdquo;, with both LUFS values underneath. It's a quick check on how loud your master is next to the records it'll sit beside.</p>
+          <p>The readout shows both LUFS values and says how your mix compares in plain words, such as &ldquo;Your mix is 3.4&nbsp;dB quieter&rdquo;. It always compares real levels, so it's a quick check on how loud your master is next to the records it'll sit beside.</p>
         </div>
         <div class="feature" style="--dot: var(--aqua)">
           <h3>Follows your session</h3>
           <p>References play when your DAW plays and restart from the top of their loop when you press play. Exports and bounces always contain your mix, whatever the switch says.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="library">
+    <div class="wrap">
+      <span class="label">Reference library</span>
+      <h2>The closest references, one click away.</h2>
+      <div class="split">
+        <div class="library-copy">
+          <p>Keep your references in <strong>Music &rsaquo; Lucky Reference &rsaquo; References</strong>, or add the folders you already use from the <strong>&ctdot;</strong> menu. They're indexed where they are, in every session.</p>
+          <ul class="points">
+            <li><strong>Search</strong> by name or folder, then load a track into reference 1, 2 or 3 with the buttons on its row.</li>
+            <li><strong>Closest</strong> ranks your library by how close each track's tonal balance and punch are to your mix, after 20 seconds of playing. As more of your mix plays, it tells you if your top matches change.</li>
+            <li><strong>Add to library</strong> copies a reference you dropped in from elsewhere, so it's there next time.</li>
+          </ul>
+          <p class="aside">Library tracks are analysed once in the background and remembered. Nothing is copied or replaced without asking.</p>
+        </div>
+        <figure class="shot">
+          <img src="assets/library.png" width="1800" height="1200" loading="lazy" alt="The Lucky Reference library sorted by Closest, with each track's match bar, format, length and 1 2 3 buttons for loading it into a reference slot.">
+          <figcaption>Sorted by Closest, with a button for each reference slot on every row.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -224,7 +252,7 @@
           <li>
             <div>
               <h3>Drop in your references</h3>
-              <p>Drag up to three tracks onto the slots, or click a slot to browse. Each one picks its loudest section to loop.</p>
+              <p>Drag up to three tracks onto the slots, click a slot to browse, or pick them from your library. Each one picks its loudest section to loop.</p>
             </div>
           </li>
           <li>
@@ -305,7 +333,7 @@
         </div>
         <div>
           <h3>Your files stay put</h3>
-          <p>References are linked, not copied into your project, so keep them where they are. If one moves, its slot says so and you can click it to find the file again.</p>
+          <p>References are linked, not copied into your project. Keep them in your library and they always have a home; if one moves, its slot says so and you can click it to find the file again.</p>
         </div>
         <div>
           <h3>Open source</h3>

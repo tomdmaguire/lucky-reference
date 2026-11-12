@@ -1,11 +1,16 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
-- A reference library on its own LIBRARY tab: everything in `~/Music/Lucky Reference/References` plus any folders you add from the ⋯ menu. Search by name or folder, and load a track into reference 1, 2 or 3 with the buttons on its row. ADD FILES... copies files in. The logo or the REFS tab takes you back.
-- ADD TO LIBRARY on a reference loaded from elsewhere copies it into the library and keeps it playing (shown once you've used the library).
-- CLOSEST sorts the library by how close each track's tonal balance and punch are to your mix, over the last two minutes played.
+A reference library, and a way to find the references that sound closest to your mix.
+
+- **Library tab:** everything in `~/Music/Lucky Reference/References`, plus any folders you add from the ⋯ menu (Library folders), indexed where they are. Search by name or folder, and load a track into reference 1, 2 or 3 with the buttons on its row. Replacing a loaded reference asks first. ADD FILES... copies files in. The REFS tab or the logo takes you back.
+- **Closest to your mix:** after 20 seconds of playing, CLOSEST ranks the library by how close each track's tonal balance and punch are to your mix. The order never jumps while you browse; if more playing changes your top three, UPDATE re-ranks.
+- **Add to library:** a reference loaded from elsewhere offers to copy itself into the library and keeps playing.
+- **Clearer loudness readout:** both LUFS values and "Your mix is 4.0 dB quieter", always comparing real levels, with a note while level matching is on. LEVEL MATCH is now an on/off switch.
 - Hover a reference to remove it with ×, or press Delete.
+- Only the selected reference shows a playhead.
+- The readout says "Waiting for your mix" until you press play.
 - Closing the plug-in window switches back to your mix, so a reference never keeps playing out of sight. Switching from the DAW with the window closed still works.
 
 ## v0.1.0
