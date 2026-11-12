@@ -123,6 +123,7 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     list.addMouseListener (this, true);
     addAndMakeVisible (list);
 
+    setWantsKeyboardFocus (true);
     library.addChangeListener (this);
     refresh();
 }
