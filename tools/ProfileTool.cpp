@@ -11,23 +11,74 @@
     usage: LuckyReferenceProfile [--stability] <file> [<file> ...] */
 namespace
 {
-std::optional<lucky::TonalProfile> analyseStretch (const juce::File& file, juce::AudioFormatManager& formats, double startFraction, double seconds)
+/** A file decoded front to back into mono (seeking straight to a late position in some FLAC files returns silence). */
+struct Song
 {
+    std::vector<float> mono;
+    double rate = 0.0;
+};
+
+Song decode (const juce::File& file, juce::AudioFormatManager& formats)
+{
+    Song song;
     std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
     if (reader == nullptr)
+        return song;
+    song.rate = reader->sampleRate;
+    constexpr int chunk = 1 << 16;
+    juce::AudioBuffer<float> buffer (2, chunk);
+    for (juce::int64 start = 0; start < reader->lengthInSamples; start += chunk)
+    {
+        const auto count = static_cast<int> (std::min<juce::int64> (chunk, reader->lengthInSamples - start));
+        reader->read (&buffer, 0, count, start, true, true);
+        for (int i = 0; i < count; ++i)
+            song.mono.push_back (0.5f * (buffer.getSample (0, i) + buffer.getSample (1, i)));
+    }
+    return song;
+}
+
+std::optional<lucky::TonalProfile> analyseStretch (const Song& song, double startSeconds, double seconds)
+{
+    const auto start = static_cast<size_t> (startSeconds * song.rate);
+    const auto length = static_cast<size_t> (seconds * song.rate);
+    if (start + length > song.mono.size())
         return std::nullopt;
-    const auto length = static_cast<juce::int64> (seconds * reader->sampleRate);
-    const auto start = static_cast<juce::int64> (startFraction * static_cast<double> (reader->lengthInSamples - length));
-    if (start < 0)
-        return std::nullopt;
-    juce::AudioBuffer<float> buffer (2, static_cast<int> (length));
-    reader->read (&buffer, 0, static_cast<int> (length), start, true, true);
-    std::vector<float> mono (static_cast<size_t> (length));
-    for (int i = 0; i < static_cast<int> (length); ++i)
-        mono[static_cast<size_t> (i)] = 0.5f * (buffer.getSample (0, i) + buffer.getSample (1, i));
-    lucky::TonalAnalyser analyser (reader->sampleRate);
-    analyser.process (mono.data(), static_cast<int> (length));
+    lucky::TonalAnalyser analyser (song.rate);
+    analyser.process (song.mono.data() + start, static_cast<int> (length));
     return analyser.getProfile();
+}
+
+double lengthSeconds (const Song& song)
+{
+    return static_cast<double> (song.mono.size()) / song.rate;
+}
+
+/** Where the loudest stretch of a song starts, in seconds, judged by one-second RMS blocks. */
+double loudestStart (const Song& song, double seconds)
+{
+    const auto block = static_cast<size_t> (song.rate);
+    const auto blocks = song.mono.size() / block;
+    const auto span = static_cast<size_t> (seconds);
+    if (blocks <= span)
+        return 0.0;
+    std::vector<double> energy (blocks);
+    for (size_t b = 0; b < blocks; ++b)
+        for (size_t i = 0; i < block; ++i)
+            energy[b] += static_cast<double> (song.mono[b * block + i]) * song.mono[b * block + i];
+    size_t bestStart = 0;
+    auto sum = 0.0, bestSum = -1.0;
+    for (size_t b = 0; b < blocks; ++b)
+    {
+        sum += energy[b];
+        if (b >= span)
+            sum -= energy[b - span];
+        if (b + 1 >= span && sum > bestSum)
+        {
+            bestSum = sum;
+            bestStart = b + 1 - span;
+        }
+    }
+    return static_cast<double> (bestStart);
 }
 
 std::vector<size_t> rankOthers (const lucky::TonalProfile& mix, const std::vector<lucky::TonalProfile>& library, size_t self)
@@ -40,37 +91,61 @@ std::vector<size_t> rankOthers (const lucky::TonalProfile& mix, const std::vecto
     return order;
 }
 
+struct Tally
+{
+    float total = 0.0f, worst = 0.0f;
+    int count = 0, firstSame = 0, topTwoSame = 0;
+
+    void add (const lucky::TonalProfile& stretch, const std::vector<lucky::TonalProfile>& full, size_t self)
+    {
+        const auto distance = lucky::TonalProfile::distance (stretch, full[self]);
+        total += distance;
+        worst = std::max (worst, distance);
+        const auto byStretch = rankOthers (stretch, full, self), byWhole = rankOthers (full[self], full, self);
+        firstSame += byStretch[0] == byWhole[0] ? 1 : 0;
+        topTwoSame += (std::set<size_t> { byStretch[0], byStretch[1] } == std::set<size_t> { byWhole[0], byWhole[1] }) ? 1 : 0;
+        ++count;
+    }
+
+    void print (double seconds) const
+    {
+        std::cout << juce::String (seconds, 0).paddedLeft (' ', 7) << "  " << juce::String (total / static_cast<float> (count), 2).paddedLeft (' ', 22)
+                  << "  " << juce::String (worst, 2).paddedLeft (' ', 5) << "  " << juce::String (100 * firstSame / count).paddedLeft (' ', 11) << "%"
+                  << "  " << juce::String (100 * topTwoSame / count).paddedLeft (' ', 9) << "%  (" << count << " stretches)\n";
+    }
+};
+
 int stability (const juce::StringArray& paths, juce::AudioFormatManager& formats)
 {
-    std::vector<juce::File> files;
+    std::vector<Song> songs;
     std::vector<lucky::TonalProfile> full;
     for (const auto& path : paths)
         if (const auto profile = lucky::ReferenceLibrary::analyseFile (juce::File (path), formats))
         {
-            files.emplace_back (path);
+            songs.push_back (decode (juce::File (path), formats));
             full.push_back (*profile);
         }
 
+    std::cout << "stretches spread through each song:\n";
     std::cout << "seconds  mean dB from whole song  worst  closest same  top-2 same\n";
     for (const auto seconds : { 5.0, 10.0, 15.0, 20.0, 30.0, 60.0 })
     {
-        auto total = 0.0f, worst = 0.0f;
-        auto count = 0, firstSame = 0, topTwoSame = 0;
-        for (size_t i = 0; i < files.size(); ++i)
-            for (const auto startFraction : { 0.2, 0.35, 0.5, 0.65, 0.8 })
-                if (const auto stretch = analyseStretch (files[i], formats, startFraction, seconds))
-                {
-                    const auto distance = lucky::TonalProfile::distance (*stretch, full[i]);
-                    total += distance;
-                    worst = std::max (worst, distance);
-                    const auto byStretch = rankOthers (*stretch, full, i), byWhole = rankOthers (full[i], full, i);
-                    firstSame += byStretch[0] == byWhole[0] ? 1 : 0;
-                    topTwoSame += (std::set<size_t> { byStretch[0], byStretch[1] } == std::set<size_t> { byWhole[0], byWhole[1] }) ? 1 : 0;
-                    ++count;
-                }
-        std::cout << juce::String (seconds, 0).paddedLeft (' ', 7) << "  " << juce::String (total / static_cast<float> (count), 2).paddedLeft (' ', 22)
-                  << "  " << juce::String (worst, 2).paddedLeft (' ', 5) << "  " << juce::String (100 * firstSame / count).paddedLeft (' ', 11) << "%"
-                  << "  " << juce::String (100 * topTwoSame / count).paddedLeft (' ', 9) << "%\n";
+        Tally tally;
+        for (size_t i = 0; i < songs.size(); ++i)
+            for (const auto fraction : { 0.2, 0.35, 0.5, 0.65, 0.8 })
+                if (const auto stretch = analyseStretch (songs[i], fraction * (lengthSeconds (songs[i]) - seconds), seconds))
+                    tally.add (*stretch, full, i);
+        tally.print (seconds);
+    }
+
+    std::cout << "\nloudest stretch only:\n";
+    for (const auto seconds : { 10.0, 15.0, 20.0, 30.0, 60.0 })
+    {
+        Tally tally;
+        for (size_t i = 0; i < songs.size(); ++i)
+            if (const auto stretch = analyseStretch (songs[i], loudestStart (songs[i], seconds), seconds))
+                tally.add (*stretch, full, i);
+        tally.print (seconds);
     }
     return 0;
 }
