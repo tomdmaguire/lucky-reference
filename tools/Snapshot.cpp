@@ -286,7 +286,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         pumpMessages (0.3);
         if (mode == "closest")
         {
-            playFor (*processor, head, fakeSong ({ -3, -2, -4 }, 5.0, 4), 14.0);
+            playFor (*processor, head, shapedSong (30, 900.0, 0.0, false), 90.0);
             processor->updateMixProfile();
             pumpMessages (0.6);
         }

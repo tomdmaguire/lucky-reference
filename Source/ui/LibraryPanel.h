@@ -37,9 +37,6 @@ public:
     /** Seconds of the mix heard so far, for the "play your mix" message. */
     std::function<double()> mixSeconds;
 
-    /** Seconds of the mix heard in total, for offering to rank again once more has played. */
-    std::function<double()> mixHeard;
-
     /** Seconds of the mix needed before it can be compared. */
     double mixSecondsNeeded = 20.0;
 
@@ -86,9 +83,9 @@ private:
     void refresh();
     void updateVisibility();
     bool waitingForMix() const;
-    /** Mix audio heard since the list was ranked. */
-    double newSecondsHeard() const;
-    void updateRefreshButton();
+    /** Notices when the mix as it is now would put different tracks in the top places than the list shows, and
+        offers UPDATE; the list itself never reorders on its own. */
+    void checkTopMatches();
     juce::String hintText() const;
     void chooseRow (int row, int slot);
     /** Loads a row into the first empty slot, or explains that every slot is full. */
@@ -105,14 +102,14 @@ private:
     bool sortClosest = false;
     /** The mix profile the list was last ranked against; kept fixed so rows don't move while you browse. */
     std::optional<TonalProfile> rankedAgainst;
-    double rankedAtSeconds = 0.0;
+    bool topMatchesChanged = false;
     int hoverRow = -1, hoverSlot = -1;
     juce::String notice;
     juce::uint32 noticeUntil = 0;
     juce::Array<juce::File> importing;
     juce::TextEditor searchBox;
     juce::TextButton clearSearchButton, addButton { "ADD FILES..." }, finderButton { "SHOW IN FINDER" };
-    juce::TextButton nameOrderButton { "A-Z" }, closestOrderButton { "CLOSEST" }, refreshButton;
+    juce::TextButton nameOrderButton { "A-Z" }, closestOrderButton { "CLOSEST" }, updateButton { "UPDATE" };
     juce::ListBox list { "Library", this };
     std::unique_ptr<juce::FileChooser> chooser;
 };

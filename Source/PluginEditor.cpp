@@ -75,7 +75,6 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     libraryPanel.onClose = [this] { closeLibrary(); };
     libraryPanel.mixProfile = [this] { return owner.getMixProfile(); };
     libraryPanel.mixSeconds = [this] { return owner.getMixProfileSeconds(); };
-    libraryPanel.mixHeard = [this] { return owner.getMixHeardSeconds(); };
     libraryPanel.mixSecondsNeeded = LuckyReferenceProcessor::mixProfileReadySeconds;
     addChildComponent (libraryPanel);
 

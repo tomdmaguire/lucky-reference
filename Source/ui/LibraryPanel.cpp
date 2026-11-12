@@ -20,14 +20,17 @@ constexpr float slotButtonSize = 20.0f;
 constexpr float slotButtonGap = 6.0f;
 constexpr juce::uint32 noticeMilliseconds = 3500;
 
-/** New mix audio, in seconds, that has to play before REFRESH is offered. */
-constexpr double refreshAfterSeconds = 10.0;
+/** How many of the closest tracks have to stay the same, in order, before UPDATE is offered. */
+constexpr size_t watchedTopMatches = 3;
 
-/** "45 s" under a minute, else "2:15". */
-juce::String formatHeard (double seconds)
+/** The keys of the closest analysed tracks, in order. */
+juce::StringArray topKeys (const std::vector<LibraryEntry>& rankedEntries)
 {
-    const auto total = juce::roundToInt (seconds);
-    return total < 60 ? juce::String (total) + " s" : juce::String (total / 60) + ":" + juce::String (total % 60).paddedLeft ('0', 2);
+    juce::StringArray keys;
+    for (const auto& entry : rankedEntries)
+        if (entry.profile && static_cast<size_t> (keys.size()) < watchedTopMatches)
+            keys.add (entry.key);
+    return keys;
 }
 
 juce::String formatDuration (double seconds)
@@ -102,10 +105,10 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
     closestOrderButton.onClick = [this] { setClosest (true); };
     nameOrderButton.setToggleState (true, juce::dontSendNotification);
 
-    refreshButton.getProperties().set ("outline", true);
-    refreshButton.setWantsKeyboardFocus (false);
-    refreshButton.setTooltip ("Rank the library again against everything heard so far");
-    refreshButton.onClick = [this]
+    updateButton.getProperties().set ("outline", true);
+    updateButton.setWantsKeyboardFocus (false);
+    updateButton.setTooltip ("Re-rank the list against your mix as it is now");
+    updateButton.onClick = [this]
     {
         rank();
         refresh();
@@ -113,7 +116,7 @@ LibraryPanel::LibraryPanel (ReferenceLibrary& referenceLibrary) : library (refer
         if (! shown.empty())
             list.selectRow (0);
     };
-    addChildComponent (refreshButton);
+    addChildComponent (updateButton);
 
     list.setRowHeight (rowHeight);
     list.setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
@@ -166,7 +169,7 @@ void LibraryPanel::timerCallback()
                 list.selectRow (0);
         }
 
-    updateRefreshButton();
+    checkTopMatches();
 
     if (notice.isNotEmpty() && juce::Time::getMillisecondCounter() > noticeUntil && importing.isEmpty())
         notice.clear();
@@ -190,20 +193,19 @@ void LibraryPanel::setClosest (bool closest)
 void LibraryPanel::rank()
 {
     rankedAgainst = sortClosest && mixProfile != nullptr ? mixProfile() : std::nullopt;
-    rankedAtSeconds = mixHeard != nullptr ? mixHeard() : 0.0;
+    topMatchesChanged = false;
 }
 
-double LibraryPanel::newSecondsHeard() const
+void LibraryPanel::checkTopMatches()
 {
-    return rankedAgainst && mixHeard != nullptr ? mixHeard() - rankedAtSeconds : 0.0;
-}
-
-void LibraryPanel::updateRefreshButton()
-{
-    const auto show = sortClosest && list.isVisible() && newSecondsHeard() >= refreshAfterSeconds;
-    if (show)
-        refreshButton.setButtonText ("REFRESH " + juce::String::fromUTF8 ("\xc2\xb7 ") + formatHeard (mixHeard()));
-    refreshButton.setVisible (show);
+    if (sortClosest && rankedAgainst && ! topMatchesChanged && mixProfile != nullptr)
+        if (const auto now = mixProfile())
+        {
+            auto reranked = shown;
+            ReferenceLibrary::sortClosestFirst (reranked, *now);
+            topMatchesChanged = topKeys (reranked) != topKeys (shown);
+        }
+    updateButton.setVisible (topMatchesChanged && list.isVisible());
 }
 
 bool LibraryPanel::waitingForMix() const
@@ -216,7 +218,7 @@ juce::String LibraryPanel::hintText() const
     if (! sortClosest || ! rankedAgainst || totalEntries == 0)
         return {};
 
-    juce::String text = "Based on " + formatHeard (rankedAtSeconds) + " of your mix. Keep playing for a closer match";
+    juce::String text = topMatchesChanged ? "Your top matches have changed" : "Closest to your mix by tonal balance and punch";
     if (analysedEntries < totalEntries)
         text += juce::String::fromUTF8 ("  \xc2\xb7  ") + "analysing " + juce::String (analysedEntries) + " of " + juce::String (totalEntries);
     return text;
@@ -317,7 +319,7 @@ void LibraryPanel::updateVisibility()
     closestOrderButton.setVisible (! empty);
     list.setVisible (! empty && ! waitingForMix());
     finderButton.setVisible (empty);
-    updateRefreshButton();
+    updateButton.setVisible (topMatchesChanged && list.isVisible());
     resized();
 }
 
@@ -578,7 +580,7 @@ void LibraryPanel::paint (juce::Graphics& g)
     {
         g.setColour (theme::textDim);
         g.setFont (theme::labelFont (11.5f));
-        g.drawText (hint, juce::Rectangle<int> (padding + 4, headerHeight + 2, getWidth() - 2 * padding - 8, hintHeight).withRight (refreshButton.isVisible() ? refreshButton.getX() - 12 : getWidth() - padding - 4),
+        g.drawText (hint, juce::Rectangle<int> (padding + 4, headerHeight + 2, getWidth() - 2 * padding - 8, hintHeight).withRight (updateButton.isVisible() ? updateButton.getX() - 12 : getWidth() - padding - 4),
                     juce::Justification::centredLeft, true);
     }
 
@@ -644,7 +646,7 @@ void LibraryPanel::resized()
     closestOrderButton.setBounds (header.removeFromLeft (82));
 
     list.setBounds (getLocalBounds().withTrimmedTop (headerHeight + 4 + (sortClosest ? hintHeight : 0)).reduced (4, 4));
-    refreshButton.setBounds (juce::Rectangle<int> (getWidth() - padding - 4 - 132, headerHeight + 4, 132, hintHeight - 4));
+    updateButton.setBounds (juce::Rectangle<int> (getWidth() - padding - 4 - 96, headerHeight + 4, 96, hintHeight - 4));
     if (empty)
     {
         auto buttons = getLocalBounds().withSizeKeepingCentre (318, controlHeight).translated (0, 52);
