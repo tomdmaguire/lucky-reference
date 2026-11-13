@@ -16,8 +16,8 @@ jobs:
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build plugin and tests
-        run: cmake --build build --target LuckyReference_VST3 LuckyReferenceTests LuckyReferenceProcessorTests
+      - name: Build plugins and tests
+        run: cmake --build build --target LuckyReference_VST3 LuckyReference_AU LuckyReferenceTests LuckyReferenceProcessorTests
 
       - name: Test
         run: ctest --test-dir build --output-on-failure

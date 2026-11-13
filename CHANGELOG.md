@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Audio Unit:** Lucky Reference now comes as an AU too, for Logic Pro, GarageBand and other AU hosts. The installer lets you choose the formats.
+
 ## v0.2.0
 
 A reference library, and a way to find the references that sound closest to your mix.

@@ -17,14 +17,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
-option(LUCKY_REFERENCE_INSTALL_AFTER_BUILD "Copy the VST3 into ~/Library/Audio/Plug-Ins/VST3 after building" ON)
+option(LUCKY_REFERENCE_INSTALL_AFTER_BUILD "Copy the plug-ins into ~/Library/Audio/Plug-Ins after building" ON)
 
 juce_add_plugin(LuckyReference
     COMPANY_NAME "Lucky Labs"
     BUNDLE_ID com.luckylabs.luckyreference
     PLUGIN_MANUFACTURER_CODE Lcky
     PLUGIN_CODE Lref
-    FORMATS VST3
+    FORMATS VST3 AU
     PRODUCT_NAME "Lucky Reference"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE

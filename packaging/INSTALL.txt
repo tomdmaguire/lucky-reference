@@ -5,13 +5,17 @@ The easiest way is the installer: download Lucky-Reference.pkg from the
 project's latest release and open it. These steps are for installing by hand
 from this zip instead.
 
-1. Copy "Lucky Reference.vst3" into ~/Library/Audio/Plug-Ins/VST3
-   (in Finder, press Cmd+Shift+G and paste the folder path to open it).
+1. Copy the plugins into place:
+   - "Lucky Reference.vst3"      -> ~/Library/Audio/Plug-Ins/VST3
+   - "Lucky Reference.component" -> ~/Library/Audio/Plug-Ins/Components   (AU, for Logic and GarageBand)
 
-2. Unblock the plugin. Lucky Reference is free and not signed by an Apple
+   In Finder, press Cmd+Shift+G and paste the folder path to open it.
+
+2. Unblock the plugins. Lucky Reference is free and not signed by an Apple
    developer account, so macOS blocks it the first time. Open Terminal and run:
 
    xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Lucky Reference.component"
 
    Alternatively, if your DAW reports the plugin as blocked, open
    System Settings > Privacy & Security and click "Allow Anyway".

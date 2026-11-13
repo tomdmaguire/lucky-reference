@@ -10,7 +10,7 @@ Compare your mix against reference tracks at matched loudness. Lucky Reference s
 
 ## Install
 
-Download [**Lucky-Reference.pkg**](https://github.com/tomdmaguire/lucky-reference/releases/latest/download/Lucky-Reference.pkg) and open it. It installs the VST3 (Apple Silicon and Intel) into `/Library/Audio/Plug-Ins/VST3`.
+Download [**Lucky-Reference.pkg**](https://github.com/tomdmaguire/lucky-reference/releases/latest/download/Lucky-Reference.pkg) and open it. It installs the VST3 and AU (Apple Silicon and Intel) into `/Library/Audio/Plug-Ins`.
 
 Lucky Reference isn't signed with a paid Apple developer certificate, so macOS won't open the installer the first time. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
 
@@ -59,13 +59,14 @@ Before tagging a release, on the installed build:
 
 ```sh
 /Applications/pluginval.app/Contents/MacOS/pluginval --strictness-level 10 --validate-in-process --validate ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"
+auval -v aufx Lref Lcky
 lipo -info ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"/Contents/MacOS/"Lucky Reference"   # x86_64 arm64
 leaks --atExit -- build/LuckyReferenceProcessorTests
 ```
 
 Then add the version's entry to `CHANGELOG.md` and push a tag such as `v0.2.0`: GitHub Actions builds, tests, ad-hoc signs and publishes `Lucky-Reference.pkg` and a zip.
 
-JUCE is fetched automatically by CMake. The build copies the VST3 into `~/Library/Audio/Plug-Ins/VST3`.
+JUCE is fetched automatically by CMake. The build copies the VST3 and AU into `~/Library/Audio/Plug-Ins`.
 
 ## Licence
 

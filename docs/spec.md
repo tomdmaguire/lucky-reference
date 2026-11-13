@@ -153,7 +153,7 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 
 ## Technical notes
 
-- JUCE 9, CMake + Ninja, JUCE fetched via FetchContent. Build setup, Theme and LookAndFeel copied from Lucky Seven as a starting point. Apple Silicon, VST3 only (AU can be added later in build config).
+- JUCE 9, CMake + Ninja, JUCE fetched via FetchContent. Build setup, Theme and LookAndFeel copied from Lucky Seven as a starting point. Apple Silicon and Intel, VST3 and AU.
 - Zero latency.
 - **From JUCE:** plugin wrapper, parameters and state, audio file decoding (`AudioFormatManager` with CoreAudio formats), threads, GUI.
 - **From macOS:** sample-rate conversion with AudioToolbox's `AudioConverter` (normal complexity, max quality); a 4-minute song loads in about 0.3 s.

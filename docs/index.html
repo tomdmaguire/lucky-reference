@@ -6,7 +6,7 @@
 <title>Lucky Reference</title>
 <meta name="description" content="Lucky Reference: a free reference plugin for macOS. Flip between your mix and up to three reference tracks with one switch, at matched loudness, and find the references in your library that sound closest to your mix.">
 <meta property="og:title" content="Lucky Reference">
-<meta property="og:description" content="A/B your mix against the records you love, at the same loudness. Free for macOS, VST3.">
+<meta property="og:description" content="A/B your mix against the records you love, at the same loudness. Free for macOS, VST3 and AU.">
 <meta property="og:image" content="https://tomdmaguire.github.io/lucky-reference/assets/reference.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
@@ -154,7 +154,7 @@
   <div class="wrap">
     <div class="hero">
       <div>
-        <span class="label">Free reference plugin for macOS &middot; VST3</span>
+        <span class="label">Free reference plugin for macOS &middot; VST3 &amp; AU</span>
         <h1>No-nonsense referencing.</h1>
         <p><strong>A/B your mix against the records you love, at the same loudness, with one switch.</strong></p>
         <div class="actions">
@@ -300,7 +300,7 @@
         <li>
           <div>
             <h3>Run the installer</h3>
-            <p>Click through to the end. It installs the VST3 for every user on your Mac.</p>
+            <p>Click through to the end. It installs the VST3 and AU for every user on your Mac.</p>
           </div>
         </li>
         <li>
@@ -313,9 +313,9 @@
 
       <details class="manual">
         <summary>Prefer to install by hand?</summary>
-        <p>Download the zip from the <a href="https://github.com/tomdmaguire/lucky-reference/releases/latest">releases page</a> and copy <code>Lucky Reference.vst3</code> into <code>~/Library/Audio/Plug-Ins/VST3</code>. Then unblock it in Terminal:</p>
+        <p>Download the zip from the <a href="https://github.com/tomdmaguire/lucky-reference/releases/latest">releases page</a> and copy <code>Lucky Reference.vst3</code> into <code>~/Library/Audio/Plug-Ins/VST3</code> and <code>Lucky Reference.component</code> into <code>~/Library/Audio/Plug-Ins/Components</code>. Then unblock them in Terminal:</p>
         <div class="command">
-          <pre id="unblock">xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"</pre>
+          <pre id="unblock">xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3" ~/Library/Audio/Plug-Ins/Components/"Lucky Reference.component"</pre>
           <button type="button" data-copy="unblock">Copy</button>
         </div>
       </details>
@@ -333,7 +333,7 @@
         </div>
         <div>
           <h3>Formats</h3>
-          <p>VST3, built for Apple Silicon and Intel Macs running macOS 13 or newer. References can be WAV, AIFF, FLAC, MP3 or M4A, up to 15 minutes long, at any sample rate.</p>
+          <p>VST3 and AU, built for Apple Silicon and Intel Macs running macOS 13 or newer. References can be WAV, AIFF, FLAC, MP3 or M4A, up to 15 minutes long, at any sample rate.</p>
         </div>
         <div>
           <h3>Your files stay put</h3>

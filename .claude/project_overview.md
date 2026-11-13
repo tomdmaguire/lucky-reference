@@ -1,6 +1,6 @@
 # Lucky Reference: project overview
 
-JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 reference plugin for the master track, a sibling of Lucky Seven (`../lucky-seven`). Licensed AGPLv3. The agreed v1 behaviour is in `docs/spec.md`. `docs/index.html` (+ `docs/assets/`) is the GitHub Pages promo site, styled like Lucky Seven's; screenshots come from `LuckyReferenceSnapshot` (`reference`, `loaded`).
+JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 and AU reference plugin for the master track, a sibling of Lucky Seven (`../lucky-seven`). Licensed AGPLv3. The agreed v1 behaviour is in `docs/spec.md`. `docs/index.html` (+ `docs/assets/`) is the GitHub Pages promo site, styled like Lucky Seven's; screenshots come from `LuckyReferenceSnapshot` (`reference`, `loaded`).
 
 ## Layout
 - `Source/PluginProcessor.*`: parameters `reference` (the A/B switch, first so it is easy to put on Ableton's device panel), `slot` (1-3), `match`. Slot file paths and loops live as `Slot` children of the APVTS state, loops in seconds so they survive a sample-rate change. Loads files through `ReferenceLoader` and, for a newly loaded file, sets the loop to its loudest 16 s. Offline renders (`isNonRealtime`) return the mix untouched.
@@ -14,7 +14,7 @@ JUCE 9 (CMake + Ninja, fetched via FetchContent) VST3 reference plugin for the m
 - `Source/ref/`: `ReferenceTrack` (decoded stereo at host rate, overview peaks, loudness slices, momentary loudness at a position, loudest-section search), `Resampler` (macOS AudioConverter), `FileFormat` (badge label; lossy bitrate via AudioFile), `ReferenceLoader` (background decode, newest request per slot wins), `LoopRegion`.
 - `Source/ui/`: `LibraryPanel` (the LIBRARY tab over the slot rows; search, A-Z/CLOSEST with match bars, blank CLOSEST state until the mix is ready, 1 2 3 load buttons per row, ADD FILES imports, empty state), `SlotRow` (empty click browses; hover × removes; ADD TO LIBRARY once the library has been opened), `SourceSwitch` (spring knob), `RadarRipples` (Lucky Seven-style ripples and glow from the knob), `SegmentGlyph`, `Settings`, `Theme` (slot 1 gold, 2 pink, 3 green), `LookAndFeel` (from Lucky Seven; adds a `toggle` outline button style).
 - `Tests/`: `LuckyReferenceTests` (DSP and loading, category "Lucky Reference") and `LuckyReferenceProcessorTests` (links the plugin; parameters, export safety, state, auto loop).
-- `tools/Benchmark.cpp`: engine CPU per block at 32-512 samples. `packaging/` + `.github/workflows/`: Lucky Seven's release pipeline adapted for VST3 only (tag `v*` -> pkg + zip).
+- `tools/Benchmark.cpp`: engine CPU per block at 32-512 samples. `packaging/` + `.github/workflows/`: Lucky Seven's release pipeline adapted for VST3 and AU (tag `v*` -> pkg + zip).
 - `tools/Snapshot.cpp`: renders the editor to PNG with generated references (`empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|closest|outside`), in a sandboxed temp library. `tools/LoadBenchmark.cpp`: times loading a file (or `--synthetic` 4-minute song). `tools/ProfileTool.cpp` (`LuckyReferenceProfile <files>`): analysis time, punch, tilt and pairwise matches of real files.
 
 ## Notes

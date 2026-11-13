@@ -17,8 +17,8 @@ jobs:
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build plugin and tests
-        run: cmake --build build --target LuckyReference_VST3 LuckyReferenceTests LuckyReferenceProcessorTests
+      - name: Build plugins and tests
+        run: cmake --build build --target LuckyReference_VST3 LuckyReference_AU LuckyReferenceTests LuckyReferenceProcessorTests
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
@@ -30,12 +30,14 @@ jobs:
           package="Lucky-Reference-${GITHUB_REF_NAME}-macOS"
           mkdir -p "dist/$package"
           cp -R "$artefacts/VST3/Lucky Reference.vst3" "dist/$package/"
+          cp -R "$artefacts/AU/Lucky Reference.component" "dist/$package/"
           codesign --force --deep --sign - "dist/$package/Lucky Reference.vst3"
+          codesign --force --deep --sign - "dist/$package/Lucky Reference.component"
           cp README.md CHANGELOG.md LICENSE "dist/$package/"
           cp Resources/Fonts/OFL.txt "dist/$package/Barlow-OFL.txt"
           cp packaging/INSTALL.txt "dist/$package/INSTALL.txt"
           (cd dist && ditto -c -k --keepParent "$package" "$package.zip")
-          packaging/build-pkg.sh "${GITHUB_REF_NAME#v}" "dist/$package/Lucky Reference.vst3" "dist/Lucky-Reference.pkg"
+          packaging/build-pkg.sh "${GITHUB_REF_NAME#v}" "dist/$package/Lucky Reference.vst3" "dist/$package/Lucky Reference.component" "dist/Lucky-Reference.pkg"
 
       - name: Publish release
         env:
