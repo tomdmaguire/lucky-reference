@@ -109,6 +109,19 @@ public:
             expectEquals (error, juce::String ("Can't read this file"));
         }
 
+        beginTest ("A WAV whose header claims more audio than the file holds is refused");
+        {
+            const auto file = folder.getChildFile ("truncated.wav");
+            test::writeWav (file, test::sine (-20.0f, 3.0, 48000.0), 48000.0);
+            juce::MemoryBlock bytes;
+            file.loadFileAsData (bytes);
+            bytes.setSize (bytes.getSize() / 2);
+            file.replaceWithData (bytes.getData(), bytes.getSize());
+            juce::String error;
+            expect (ReferenceTrack::load (file, 48000.0, formats, error) == nullptr);
+            expect (error.isNotEmpty());
+        }
+
         beginTest ("Format labels flag lossy files with their bitrate");
         {
             const auto wav = folder.getChildFile ("format source.wav");

@@ -9,6 +9,16 @@ namespace lucky
 
 namespace
 {
+/** False when an uncompressed WAV or AIFF claims more audio than the file can hold, as a damaged or crafted header can. */
+bool lengthFitsFile (const juce::AudioFormatReader& reader, const juce::File& file)
+{
+    const auto uncompressed = reader.getFormatName() == "WAV file" || reader.getFormatName() == "AIFF file";
+    if (! uncompressed || reader.bitsPerSample == 0)
+        return true;
+    const auto bytes = reader.lengthInSamples * static_cast<juce::int64> (reader.numChannels) * (reader.bitsPerSample / 8);
+    return bytes <= file.getSize();
+}
+
 juce::AudioBuffer<float> toStereo (juce::AudioBuffer<float> audio)
 {
     if (audio.getNumChannels() == 2)
@@ -40,14 +50,34 @@ std::shared_ptr<const ReferenceTrack> ReferenceTrack::load (const juce::File& fi
         return nullptr;
     }
 
-    juce::AudioBuffer<float> decoded (channels, length);
-    if (! reader->read (&decoded, 0, length, 0, true, channels > 1))
+    if (reader->sampleRate <= 0.0 || ! lengthFitsFile (*reader, file))
     {
         error = "Can't read this file";
         return nullptr;
     }
 
-    return std::make_shared<const ReferenceTrack> (file, resampleStereo (toStereo (std::move (decoded)), reader->sampleRate, sampleRate), sampleRate);
+    try
+    {
+        juce::AudioBuffer<float> decoded (channels, length);
+        if (! reader->read (&decoded, 0, length, 0, true, channels > 1))
+        {
+            error = "Can't read this file";
+            return nullptr;
+        }
+
+        auto audio = resampleStereo (toStereo (std::move (decoded)), reader->sampleRate, sampleRate);
+        if (audio.getNumSamples() == 0)
+        {
+            error = "Can't read this file";
+            return nullptr;
+        }
+        return std::make_shared<const ReferenceTrack> (file, std::move (audio), sampleRate);
+    }
+    catch (const std::bad_alloc&)
+    {
+        error = "Not enough memory to load this file";
+        return nullptr;
+    }
 }
 
 ReferenceTrack::ReferenceTrack (juce::File source, juce::AudioBuffer<float> stereoAudio, double sampleRate)

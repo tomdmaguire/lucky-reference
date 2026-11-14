@@ -51,7 +51,7 @@ struct Feed
 };
 } // namespace
 
-juce::AudioBuffer<float> resampleStereo (const juce::AudioBuffer<float>& source, double sourceRate, double targetRate)
+juce::AudioBuffer<float> resampleStereo (juce::AudioBuffer<float> source, double sourceRate, double targetRate)
 {
     if (std::abs (sourceRate - targetRate) < 0.5 || source.getNumSamples() == 0)
         return source;
@@ -70,6 +70,7 @@ juce::AudioBuffer<float> resampleStereo (const juce::AudioBuffer<float>& source,
     juce::AudioBuffer<float> result (2, expected + 64);
     Feed feed { source };
     int written = 0;
+    auto failed = false;
 
     while (written < result.getNumSamples())
     {
@@ -86,11 +87,14 @@ juce::AudioBuffer<float> resampleStereo (const juce::AudioBuffer<float>& source,
 
         const auto status = AudioConverterFillComplexBuffer (converter, Feed::provide, &feed, &frames, list, nullptr);
         written += static_cast<int> (frames);
-        if (status != noErr || frames == 0)
+        failed = status != noErr;
+        if (failed || frames == 0)
             break;
     }
 
     AudioConverterDispose (converter);
+    if (failed)
+        return {};
     result.setSize (2, std::min (written, expected), true);
     return result;
 }
