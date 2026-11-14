@@ -53,32 +53,8 @@ float gatedLoudness (const double* blocks, size_t count) noexcept
 
 void LoudnessMeter::prepare (double sampleRate, double windowSeconds)
 {
-    const auto pi = juce::MathConstants<double>::pi;
-
-    {
-        const auto f0 = 1681.974450955533, gainDb = 3.999843853973347, q = 0.7071752369554196;
-        const auto k = std::tan (pi * f0 / sampleRate);
-        const auto vh = std::pow (10.0, gainDb / 20.0);
-        const auto vb = std::pow (vh, 0.4996667741545416);
-        const auto a0 = 1.0 + k / q + k * k;
-        auto& shelf = shelfTemplate;
-        shelf.b0 = (vh + vb * k / q + k * k) / a0;
-        shelf.b1 = 2.0 * (k * k - vh) / a0;
-        shelf.b2 = (vh - vb * k / q + k * k) / a0;
-        shelf.a1 = 2.0 * (k * k - 1.0) / a0;
-        shelf.a2 = (1.0 - k / q + k * k) / a0;
-    }
-    {
-        const auto f0 = 38.13547087602444, q = 0.5003270373238773;
-        const auto k = std::tan (pi * f0 / sampleRate);
-        const auto a0 = 1.0 + k / q + k * k;
-        auto& highPass = highPassTemplate;
-        highPass.b0 = 1.0;
-        highPass.b1 = -2.0;
-        highPass.b2 = 1.0;
-        highPass.a1 = 2.0 * (k * k - 1.0) / a0;
-        highPass.a2 = (1.0 - k / q + k * k) / a0;
-    }
+    for (auto& filter : filters)
+        filter.prepare (sampleRate);
 
     subBlockLength = std::max (1, juce::roundToInt (sampleRate * 0.1));
     fastLength = std::max (1, juce::roundToInt (sampleRate * fastSliceSeconds));
@@ -88,11 +64,8 @@ void LoudnessMeter::prepare (double sampleRate, double windowSeconds)
 
 void LoudnessMeter::reset() noexcept
 {
-    for (auto& channel : filters)
-    {
-        channel[0] = shelfTemplate;
-        channel[1] = highPassTemplate;
-    }
+    for (auto& filter : filters)
+        filter.reset();
 
     subBlockFill = 0;
     subBlockSum = 0.0;
@@ -122,8 +95,7 @@ void LoudnessMeter::filterInto (const float* const* channels, int numChannels, i
     {
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            auto& [shelf, highPass] = filters[static_cast<size_t> (ch)];
-            const auto y = highPass.process (shelf.process (static_cast<double> (channels[ch][i])));
+            const auto y = filters[static_cast<size_t> (ch)].process (static_cast<double> (channels[ch][i]));
             subBlockSum += y * y;
             fastSum += y * y;
         }

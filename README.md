@@ -40,7 +40,7 @@ Put Lucky Reference last on your master, after any limiter or mastering chain (m
 
 ## Building
 
-Requirements: macOS 13 or newer, Xcode (with the command line tools selected) and CMake 3.25 or newer. Ninja is optional but faster.
+Requirements: macOS 13 or newer, Xcode (with the command line tools selected), CMake 3.25 or newer (Ninja is optional but faster), and [Lucky Labs](https://github.com/tomdmaguire/lucky-labs), the suite's shared code, checked out beside this folder (or pass `-DLUCKY_LABS_DIR=<path>`).
 
 ```sh
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -72,6 +72,6 @@ JUCE is fetched automatically by CMake. The build copies the VST3 and AU into `~
 
 ## Licence
 
-Copyright (C) 2026 Tom Maguire. Lucky Reference is free software under the [GNU Affero General Public License v3.0](LICENSE), with no warranty. It is built with [JUCE](https://juce.com), used here under the AGPLv3; the licences of the third-party code it includes are in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). The bundled Barlow fonts are under the SIL Open Font License (`Resources/Fonts/OFL.txt`).
+Copyright (C) 2026 Tom Maguire. Lucky Reference is free software under the [GNU Affero General Public License v3.0](LICENSE), with no warranty. It is built with [JUCE](https://juce.com), used here under the AGPLv3; the licences of the third-party code it includes are in Lucky Labs' [`THIRD-PARTY-NOTICES.txt`](https://github.com/tomdmaguire/lucky-labs/blob/main/Resources/THIRD-PARTY-NOTICES.txt), which ships with every release. The interface is set in Barlow (SIL Open Font License, in [Lucky Labs](https://github.com/tomdmaguire/lucky-labs/blob/main/Resources/Fonts/OFL.txt)).
 
 VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc. Ableton is a trademark of Ableton AG. Other product names are trademarks of their owners; Lucky Reference isn't affiliated with or endorsed by them.

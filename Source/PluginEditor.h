@@ -2,11 +2,9 @@
 
 #include "PluginProcessor.h"
 #include "ui/LibraryPanel.h"
-#include "ui/SmallSwitch.h"
-#include "ui/LookAndFeel.h"
 #include "ui/RadarRipples.h"
-#include "ui/Settings.h"
 #include "ui/SlotRow.h"
+#include "ui/Theme.h"
 #include "ui/SourceSwitch.h"
 
 /** The editor's content at its base size; the editor scales it to the window. */
@@ -21,11 +19,8 @@ public:
     explicit LuckyReferenceView (LuckyReferenceProcessor&);
     ~LuckyReferenceView() override;
 
-    /** Asks the editor to resize to a scale of the base size. */
-    std::function<void (float scale)> onScaleRequested;
-
-    /** The editor's current scale, for ticking the Window size menu. */
-    std::function<float()> getScale;
+    /** Adds the editor's Window size submenu to the ••• menu. */
+    std::function<void (juce::PopupMenu&)> addWindowSizeMenu;
 
     /** Shows the LIBRARY tab over the slots, optionally sorted closest first. */
     void openLibrary (bool closest = false);
@@ -85,24 +80,17 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LuckyReferenceView)
 };
 
-class LuckyReferenceEditor final : public juce::AudioProcessorEditor
+class LuckyReferenceEditor final : public lucky::ScaledEditor
 {
 public:
     explicit LuckyReferenceEditor (LuckyReferenceProcessor&);
     ~LuckyReferenceEditor() override;
 
-    void resized() override;
-
     /** Opens the LIBRARY tab, optionally sorted closest first. */
     void showLibrary (bool closest = false) { view.openLibrary (closest); }
 
 private:
-    float currentScale() const;
-
-    juce::SharedResourcePointer<lucky::LuckyLookAndFeel> lookAndFeel;
-    juce::SharedResourcePointer<lucky::Settings> settings;
     LuckyReferenceView view;
-    bool sizeRestored = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LuckyReferenceEditor)
 };

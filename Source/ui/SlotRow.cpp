@@ -368,7 +368,7 @@ void SlotRow::showMenu()
 bool SlotRow::canAddToLibrary() const
 {
     const auto file = processor.getFile (slot);
-    return settings->hasOpenedLibrary() && processor.getTrack (slot) != nullptr && file.existsAsFile() && ! processor.getLibrary().contains (file);
+    return settings->getBool ("libraryOpened", false) && processor.getTrack (slot) != nullptr && file.existsAsFile() && ! processor.getLibrary().contains (file);
 }
 
 void SlotRow::addToLibrary()
@@ -413,14 +413,14 @@ juce::File SlotRow::browseStartFolder() const
         if (file != juce::File() && file.getParentDirectory().isDirectory())
             return file.getParentDirectory();
 
-    if (const auto last = settings->getLastReferenceFolder(); last.isDirectory())
+    if (const juce::File last (settings->getString ("lastReferenceFolder")); last.isDirectory())
         return last;
     return juce::File::getSpecialLocation (juce::File::userMusicDirectory);
 }
 
 void SlotRow::loadAndRemember (const juce::File& file)
 {
-    settings->setLastReferenceFolder (file.getParentDirectory());
+    settings->setString ("lastReferenceFolder", file.getParentDirectory().getFullPathName());
     processor.loadFile (slot, file);
 }
 

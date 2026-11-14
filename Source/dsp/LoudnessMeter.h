@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <lucky_dsp/lucky_dsp.h>
 #include <array>
 #include <vector>
 
@@ -50,26 +51,11 @@ public:
     static constexpr float relativeGateLu = -10.0f;
 
 private:
-    struct Biquad
-    {
-        double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
-        double z1 = 0, z2 = 0;
-
-        double process (double x) noexcept
-        {
-            const auto y = b0 * x + z1;
-            z1 = b1 * x - a1 * y + z2;
-            z2 = b2 * x - a2 * y;
-            return y;
-        }
-    };
-
     void finishSubBlock() noexcept;
     void filterInto (const float* const* channels, int numChannels, int numSamples, std::vector<double>* slices,
                      std::vector<double>* fastSlices);
 
-    std::array<std::array<Biquad, 2>, 2> filters {};
-    Biquad shelfTemplate, highPassTemplate;
+    std::array<KWeighting, 2> filters {};
     int subBlockLength = 4800;
     int fastLength = 1200;
     int fastFill = 0;

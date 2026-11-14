@@ -1,12 +1,7 @@
 #include "PluginEditor.h"
-#include "ui/SegmentGlyph.h"
-#include "ui/Theme.h"
 
 namespace
 {
-constexpr float minScale = 0.75f;
-constexpr float maxScale = 2.0f;
-constexpr std::array<float, 4> scalePresets { 1.0f, 1.25f, 1.5f, 1.75f };
 constexpr int topBarHeight = 48;
 constexpr int logoWidth = 240;
 constexpr int iconWidth = 52;
@@ -29,19 +24,6 @@ juce::String signedDb (float value, const juce::String& unit)
 juce::RangedAudioParameter& parameter (LuckyReferenceProcessor& processor, const juce::String& id)
 {
     return *processor.getParameters().getParameter (id);
-}
-
-/** Three dots, as on Lucky Seven's menu button. */
-std::unique_ptr<juce::Drawable> makeMenuIcon (juce::Colour colour)
-{
-    juce::Path path;
-    for (const auto x : { 4.0f, 11.0f, 18.0f })
-        path.addEllipse (x - 1.6f, 9.4f, 3.2f, 3.2f);
-
-    auto drawable = std::make_unique<juce::DrawablePath>();
-    drawable->setPath (path);
-    drawable->setFill (colour);
-    return drawable;
 }
 
 /** Top edge of the stage under the slot rows. */
@@ -124,11 +106,7 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     };
     addAndMakeVisible (matchSwitch);
 
-    const auto idleIcon = makeMenuIcon (lucky::theme::textDim);
-    const auto hoverIcon = makeMenuIcon (lucky::theme::text);
-    menuButton.setImages (idleIcon.get(), hoverIcon.get());
-    menuButton.setEdgeIndent (16);
-    menuButton.setWantsKeyboardFocus (false);
+    lucky::setUpMenuButton (menuButton, 16);
     menuButton.onClick = [this] { showMenu(); };
     addAndMakeVisible (menuButton);
 
@@ -175,7 +153,7 @@ void LuckyReferenceView::openLibrary (bool closest)
 {
     if (closest)
         libraryPanel.setClosest (true);
-    settings->setOpenedLibrary();
+    settings->setBool ("libraryOpened", true);
     libraryTab.setToggleState (true, juce::dontSendNotification);
     if (libraryPanel.isVisible())
         return;
@@ -432,15 +410,10 @@ void LuckyReferenceView::resized()
 
 void LuckyReferenceView::showMenu()
 {
-    juce::PopupMenu sizes;
-    const auto scale = getScale != nullptr ? getScale() : 1.0f;
-    for (const auto preset : scalePresets)
-        sizes.addItem (juce::String (juce::roundToInt (preset * 100.0f)) + "%", true, std::abs (scale - preset) < 0.01f,
-                       [this, preset] { if (onScaleRequested) onScaleRequested (preset); });
-
     juce::PopupMenu menu;
     menu.addSectionHeader (juce::String ("Lucky Reference v") + JucePlugin_VersionString);
-    menu.addSubMenu ("Window size", sizes);
+    if (addWindowSizeMenu)
+        addWindowSizeMenu (menu);
 
     menu.addSeparator();
     menu.addItem ("Put it last on your master, after any limiter", false, false, [] {});
@@ -484,42 +457,13 @@ void LuckyReferenceView::chooseLibraryFolder()
 }
 
 LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorToEdit)
-    : AudioProcessorEditor (processorToEdit), view (processorToEdit)
+    : ScaledEditor (processorToEdit, LuckyReferenceView::baseWidth, LuckyReferenceView::baseHeight), view (processorToEdit)
 {
-    const auto savedScale = juce::jlimit (minScale, maxScale, settings->getUiScale());
-
-    view.getScale = [this] { return currentScale(); };
-    view.onScaleRequested = [this] (float scale)
-    {
-        setSize (juce::roundToInt (LuckyReferenceView::baseWidth * scale), juce::roundToInt (LuckyReferenceView::baseHeight * scale));
-    };
-    addAndMakeVisible (view);
-
-    setResizable (true, true);
-    setResizeLimits (juce::roundToInt (LuckyReferenceView::baseWidth * minScale), juce::roundToInt (LuckyReferenceView::baseHeight * minScale),
-                     juce::roundToInt (LuckyReferenceView::baseWidth * maxScale), juce::roundToInt (LuckyReferenceView::baseHeight * maxScale));
-    getConstrainer()->setFixedAspectRatio (static_cast<double> (LuckyReferenceView::baseWidth) / LuckyReferenceView::baseHeight);
-
-    setSize (juce::roundToInt (LuckyReferenceView::baseWidth * savedScale), juce::roundToInt (LuckyReferenceView::baseHeight * savedScale));
-    sizeRestored = true;
+    view.addWindowSizeMenu = [this] (juce::PopupMenu& menu) { ScaledEditor::addWindowSizeMenu (menu); };
+    setView (view);
 }
 
 LuckyReferenceEditor::~LuckyReferenceEditor()
 {
     static_cast<LuckyReferenceProcessor&> (processor).switchToMix();
-}
-
-float LuckyReferenceEditor::currentScale() const
-{
-    return static_cast<float> (getWidth()) / static_cast<float> (LuckyReferenceView::baseWidth);
-}
-
-void LuckyReferenceEditor::resized()
-{
-    const auto scale = currentScale();
-    view.setBounds (0, 0, LuckyReferenceView::baseWidth, LuckyReferenceView::baseHeight);
-    view.setTransform (juce::AffineTransform::scale (scale));
-
-    if (sizeRestored)
-        settings->setUiScale (scale);
 }

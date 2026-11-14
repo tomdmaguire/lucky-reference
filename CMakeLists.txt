@@ -17,6 +17,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+set(LUCKY_LABS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lucky-labs" CACHE PATH "Lucky Labs shared code")
+include("${LUCKY_LABS_DIR}/cmake/LuckyLabs.cmake")
+
 option(LUCKY_REFERENCE_INSTALL_AFTER_BUILD "Copy the plug-ins into ~/Library/Audio/Plug-Ins after building" ON)
 
 juce_add_plugin(LuckyReference
@@ -35,14 +38,6 @@ juce_add_plugin(LuckyReference
     COPY_PLUGIN_AFTER_BUILD ${LUCKY_REFERENCE_INSTALL_AFTER_BUILD}
 )
 
-juce_add_binary_data(LuckyReferenceFonts
-    NAMESPACE LuckyReferenceFonts
-    SOURCES
-        Resources/Fonts/Barlow-Regular.ttf
-        Resources/Fonts/Barlow-Medium.ttf
-        Resources/Fonts/Barlow-SemiBold.ttf
-)
-
 set(LUCKY_REFERENCE_CORE_SOURCES
     Source/dsp/LoudnessMeter.cpp
     Source/ref/ReferenceTrack.cpp
@@ -58,7 +53,6 @@ set(LUCKY_REFERENCE_CORE_SOURCES
 target_sources(LuckyReference PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/ui/LookAndFeel.cpp
     Source/ui/SlotRow.cpp
     Source/ui/LibraryPanel.cpp
     Source/ui/SourceSwitch.cpp
@@ -76,7 +70,9 @@ target_compile_definitions(LuckyReference PUBLIC
 
 target_link_libraries(LuckyReference
     PRIVATE
-        LuckyReferenceFonts
+        lucky_ui
+        lucky_dsp
+        LuckyLabsFonts
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC
@@ -107,6 +103,7 @@ target_compile_definitions(LuckyReferenceTests PRIVATE
 
 target_link_libraries(LuckyReferenceTests
     PRIVATE
+        lucky_dsp
         juce::juce_audio_formats
         juce::juce_dsp
         juce::juce_data_structures
@@ -135,7 +132,7 @@ target_sources(LuckyReferenceLoadBenchmark PRIVATE tools/LoadBenchmark.cpp ${LUC
 target_include_directories(LuckyReferenceLoadBenchmark PRIVATE Source)
 target_compile_definitions(LuckyReferenceLoadBenchmark PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(LuckyReferenceLoadBenchmark
-    PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
+    PRIVATE lucky_dsp juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 juce_add_console_app(LuckyReferenceBench PRODUCT_NAME "Lucky Reference Bench")
@@ -143,7 +140,7 @@ target_sources(LuckyReferenceBench PRIVATE tools/Benchmark.cpp ${LUCKY_REFERENCE
 target_include_directories(LuckyReferenceBench PRIVATE Source)
 target_compile_definitions(LuckyReferenceBench PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(LuckyReferenceBench
-    PRIVATE juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
+    PRIVATE lucky_dsp juce::juce_audio_formats juce::juce_dsp juce::juce_data_structures "-framework AudioToolbox"
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 add_executable(LuckyReferenceProfile tools/ProfileTool.cpp)

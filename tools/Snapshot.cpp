@@ -193,7 +193,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
     processor->setPlayHead (&head);
 
     if (mode == "outside")
-        juce::SharedResourcePointer<lucky::Settings>()->setOpenedLibrary();
+        juce::SharedResourcePointer<lucky::Settings>()->setBool ("libraryOpened", true);
 
     if (mode != "empty" && mode != "library-empty")
     {

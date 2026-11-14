@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
-#include "Settings.h"
+#include "Theme.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <optional>
 
