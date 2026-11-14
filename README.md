@@ -66,7 +66,7 @@ lipo -info ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3"/Contents/MacOS/"
 leaks --atExit -- build/LuckyReferenceProcessorTests
 ```
 
-Then add the version's entry to `CHANGELOG.md` and push a tag such as `v0.2.0`: GitHub Actions builds, tests, ad-hoc signs and publishes `Lucky-Reference.pkg` and a zip.
+To release, set the version in `CMakeLists.txt` (`project(... VERSION x.y.z)`), rename the changelog's `## Unreleased` section to `## vx.y.z`, then push a tag `vx.y.z`. GitHub Actions checks the three agree, builds, tests, validates the AU, ad-hoc signs and publishes `Lucky-Reference.pkg` and a zip, with that changelog section as the release notes. The release workflow can also be run by hand (Actions → Release → Run workflow) to build the packages without publishing.
 
 JUCE is fetched automatically by CMake. The build copies the VST3 and AU into `~/Library/Audio/Plug-Ins`.
 

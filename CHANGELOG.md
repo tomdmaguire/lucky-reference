@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.0.0
 
+- **1.0:** Lucky Reference now numbers its versions like Lucky Seven and Lucky Comp.
 - **Audio Unit:** Lucky Reference now comes as an AU too, for Logic Pro, GarageBand and other AU hosts. The installer lets you choose the formats.
 - Swapping or reloading a reference while you listen no longer plays it too loud for a moment; it fades in at the right level.
 - Tooltips now show.
