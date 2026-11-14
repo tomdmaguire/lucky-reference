@@ -10,11 +10,13 @@ Compare your mix against reference tracks at matched loudness. Lucky Reference s
 
 ## Install
 
-Download [**Lucky-Reference.pkg**](https://github.com/tomdmaguire/lucky-reference/releases/latest/download/Lucky-Reference.pkg) and open it. It installs the VST3 and AU (Apple Silicon and Intel) into `/Library/Audio/Plug-Ins`.
+Download [**Lucky-Reference.pkg**](https://github.com/tomdmaguire/lucky-reference/releases/latest/download/Lucky-Reference.pkg) and open it. It installs the VST®3 and AU (Apple Silicon and Intel) into `/Library/Audio/Plug-Ins`.
 
-Lucky Reference isn't signed with a paid Apple developer certificate, so macOS won't open the installer the first time. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+Lucky Reference isn't signed or notarised by Apple (that needs a paid developer account), so macOS won't open the installer the first time. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
 
 A zip for installing by hand is also on the [releases page](https://github.com/tomdmaguire/lucky-reference/releases/latest); its `INSTALL.txt` explains the steps.
+
+**Updating or removing.** The installer replaces the old version. If you ever copied Lucky Reference into `~/Library/Audio/Plug-Ins` by hand, delete those copies so your DAW doesn't load the old one. To remove Lucky Reference, delete `Lucky Reference.vst3` and `Lucky Reference.component` from `/Library/Audio/Plug-Ins/VST3` and `/Library/Audio/Plug-Ins/Components`. Your references stay in `~/Music/Lucky Reference`.
 
 ## Features
 
@@ -70,4 +72,6 @@ JUCE is fetched automatically by CMake. The build copies the VST3 and AU into `~
 
 ## Licence
 
-AGPLv3. The bundled Barlow fonts are under the SIL Open Font License (`Resources/Fonts/OFL.txt`).
+Copyright (C) 2026 Tom Maguire. Lucky Reference is free software under the [GNU Affero General Public License v3.0](LICENSE), with no warranty. It is built with [JUCE](https://juce.com), used here under the AGPLv3; the licences of the third-party code it includes are in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). The bundled Barlow fonts are under the SIL Open Font License (`Resources/Fonts/OFL.txt`).
+
+VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc. Ableton is a trademark of Ableton AG. Other product names are trademarks of their owners; Lucky Reference isn't affiliated with or endorsed by them.

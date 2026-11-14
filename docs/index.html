@@ -118,6 +118,7 @@
   .manual summary { cursor: pointer; color: var(--text); font-family: var(--display); font-weight: 600; letter-spacing: 0.03em; font-size: 17px; }
   .manual[open] summary { margin-bottom: 8px; }
   .manual p { margin: 8px 0; }
+  .manual + .manual { margin-top: 12px; }
   .points { margin: 18px 0; padding-left: 20px; color: var(--dim); }
   .points li { margin: 0 0 10px; }
   .points strong, .library-copy p strong { color: var(--text); font-weight: 600; }
@@ -162,7 +163,7 @@
   <div class="wrap">
     <div class="hero">
       <div>
-        <span class="label">Free reference plugin for macOS &middot; VST3 &amp; AU</span>
+        <span class="label">Free reference plugin for macOS &middot; VST&reg;3 &amp; AU</span>
         <h1>No-nonsense referencing.</h1>
         <p><strong>A/B your mix against the records you love, at the same loudness, with one switch.</strong></p>
         <div class="actions">
@@ -296,7 +297,7 @@
         <li>
           <div>
             <h3>Give the installer permission to run</h3>
-            <p>macOS blocks the installer the first time with <em>&ldquo;Lucky-Reference.pkg&rdquo; Not Opened</em>, because free apps like Lucky Reference aren't signed with a paid Apple certificate. To allow it:</p>
+            <p>macOS blocks the installer the first time with <em>&ldquo;Lucky-Reference.pkg&rdquo; Not Opened</em>, because Lucky Reference isn't signed or notarised by Apple (that needs a paid developer account). To allow it:</p>
             <ol class="substeps">
               <li>Click <strong>Done</strong> (not Move to Trash).</li>
               <li>Open <strong>System Settings &rarr; Privacy &amp; Security</strong> and scroll down to Security.</li>
@@ -326,6 +327,12 @@
           <pre id="unblock">xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Lucky Reference.vst3" ~/Library/Audio/Plug-Ins/Components/"Lucky Reference.component"</pre>
           <button type="button" data-copy="unblock">Copy</button>
         </div>
+      </details>
+
+      <details class="manual">
+        <summary>Updating or removing</summary>
+        <p>The installer replaces the old version. If you ever copied Lucky Reference into <code>~/Library/Audio/Plug-Ins</code> by hand, delete those copies so your DAW doesn't load the old one.</p>
+        <p>To remove Lucky Reference, delete <code>Lucky Reference.vst3</code> and <code>Lucky Reference.component</code> from <code>/Library/Audio/Plug-Ins/VST3</code> and <code>/Library/Audio/Plug-Ins/Components</code>. Your references stay in <code>~/Music/Lucky Reference</code>.</p>
       </details>
     </div>
   </section>
@@ -359,6 +366,7 @@
 <footer>
   <div class="wrap">
     <p>Lucky Reference is free and open source under the AGPLv3. Built with JUCE; interface set in Barlow (SIL Open Font License).</p>
+    <p>VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc. Ableton is a trademark of Ableton AG. Other product names are trademarks of their owners; Lucky Reference isn't affiliated with or endorsed by them.</p>
     <p><a href="https://github.com/tomdmaguire/lucky-reference">Source on GitHub</a></p>
   </div>
 </footer>
