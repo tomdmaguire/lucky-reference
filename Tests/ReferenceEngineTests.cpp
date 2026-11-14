@@ -209,6 +209,21 @@ public:
             expect (largest < amplitude * 0.2f, "step " + juce::String (largest));
         }
 
+        beginTest ("Swapping the reference while listening never plays it louder than matched");
+        {
+            Harness harness;
+            harness.engine.setSlot (0, track (test::sine (-40.0f, 30.0, rate)), {});
+            harness.controls = { true, 0, true };
+            harness.run (test::sine (-20.0f, 6.0, rate));
+            expectWithinAbsoluteError (harness.engine.getAppliedGainDb (0), 20.0f, 0.2f);
+
+            harness.engine.setSlot (0, nullptr, {});
+            harness.run (test::sine (-20.0f, 0.2, rate));
+            harness.engine.setSlot (0, track (test::sine (-1.0f, 30.0, rate)), {});
+            const auto output = harness.run (test::sine (-20.0f, 2.0, rate));
+            expectLessThan (output.getMagnitude (0, 0, output.getNumSamples()), juce::Decibels::decibelsToGain (-19.0f));
+        }
+
         beginTest ("Jumping resets the mix measurement, a host loop wrap does not");
         {
             const auto quiet = test::sine (-30.0f, 5.0, rate), loud = test::sine (-20.0f, 5.0, rate);

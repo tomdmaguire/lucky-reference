@@ -106,6 +106,7 @@ private:
     std::array<Fader, numSlots> referenceFaders;
     std::array<juce::SmoothedValue<float>, numSlots> gainsDb;
     std::array<juce::SmoothedValue<float>, numSlots> readiness;
+    std::array<juce::uint64, numSlots> lastSerials {};
     std::atomic<float> mixFast { -std::numeric_limits<float>::infinity() };
     std::array<std::atomic<float>, numSlots> appliedGainsDb;
     bool wasMatching = true;

@@ -20,6 +20,8 @@ public:
         ReferenceTrackPtr track;
         juce::Range<juce::int64> loop;
         float loudness = -std::numeric_limits<float>::infinity();
+        /** Counts up with every setSource, so a new source is told apart even at a reused address. */
+        juce::uint64 serial = 0;
     };
 
     /** Message thread: sets the track and loop to play; an empty track silences the player. */
@@ -51,6 +53,7 @@ private:
     juce::int64 step (juce::int64 from, int n) const noexcept;
 
     Handoff<Source> sources;
+    juce::uint64 nextSerial = 0;
     const Source* source = nullptr;
     juce::int64 playhead = 0;
     std::atomic<juce::int64> position { 0 };

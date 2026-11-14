@@ -122,7 +122,13 @@ void ReferenceEngine::updateMatching (const Controls& controls, const std::array
         else if (std::isfinite (mix) && std::isfinite (loudness))
             target = juce::jlimit (-maximumGainDb, maximumGainDb, mix - loudness);
 
-        if (matchChanged || firstEstimate || referenceFaders[slot].isSilent())
+        const auto serial = sources[slot] != nullptr ? sources[slot]->serial : 0;
+        const auto sourceChanged = serial != lastSerials[slot];
+        lastSerials[slot] = serial;
+        if (sourceChanged)
+            readiness[slot].setCurrentAndTargetValue (0.0f);
+
+        if (matchChanged || firstEstimate || sourceChanged || referenceFaders[slot].isSilent())
             gainsDb[slot].setCurrentAndTargetValue (target);
         else
             gainsDb[slot].setTargetValue (target);

@@ -6,6 +6,7 @@ namespace lucky
 void ReferencePlayer::setSource (ReferenceTrackPtr track, const LoopRegion& loop)
 {
     auto next = std::make_unique<Source>();
+    next->serial = ++nextSerial;
     if (track != nullptr)
     {
         next->loop = loop.resolve (track->getLength(), track->getSampleRate());
