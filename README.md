@@ -32,9 +32,9 @@ A zip for installing by hand is also on the [releases page](https://github.com/t
 - **Window size** from 75% to 200%: drag the corner or pick a size from the **⋯** menu.
 - **Follows your transport**: references play when your DAW plays, and every reference restarts at its loop start when you press play.
 - **Safe exports**: offline renders always contain your mix.
-- **Light**: about 0.1% of the per-block time on average at 48 kHz, with the worst block under 6% at a 64-sample buffer. A 4-minute reference loads in about 0.3 s and holds about 90 MB.
+- **Light**: about 0.1% of the per-block time on average at 48 kHz, with the worst block under 6% at a 64-sample buffer. A 4-minute reference loads in about 0.3 s and holds about 90 MB; the longest, 15 minutes, holds about 345 MB at 48 kHz.
 
-References are linked by path, not copied into your project, so keep them where they are (the library is a good home), or relocate them from the slot if you move them.
+References are linked by path, not copied into your project, so keep them where they are (the library is a good home), or relocate them from the slot if you move them. Sessions store the file paths of your references. Lucky Reference never goes online.
 
 Put Lucky Reference last on your master, after any limiter or mastering chain (monitor correction such as Sonarworks can come after it).
 

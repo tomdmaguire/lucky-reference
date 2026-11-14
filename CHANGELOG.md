@@ -5,6 +5,11 @@
 - **Audio Unit:** Lucky Reference now comes as an AU too, for Logic Pro, GarageBand and other AU hosts. The installer lets you choose the formats.
 - Swapping or reloading a reference while you listen no longer plays it too loud for a moment; it fades in at the right level.
 - Tooltips now show.
+- CLOSEST no longer favours files at your session's sample rate: a 44.1 kHz rip and a 48 kHz file of the same song now rank the same. Your library is analysed again once.
+- The library looks for new files in the background, so opening the plug-in or the LIBRARY tab never pauses your DAW, even with big folders.
+- The References folder in your Music folder is created when you first open Lucky Reference, not when your DAW scans plug-ins.
+- When your mix and a reference are more than 24 dB apart, the readout says Level Match can't make up the whole gap.
+- Damaged files, or files too big for the memory available, now show an error on their slot instead of risking a crash.
 
 ## v0.2.0
 
