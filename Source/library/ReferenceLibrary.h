@@ -32,8 +32,8 @@ struct LibraryEntry
 };
 
 /** The reference library: a main folder of reference tracks plus any folders the user adds, shared by every plugin
-    instance. A rescan lists the folders (including subfolders) on the calling thread, then a low-priority thread reads
-    each new or changed file's details, which are cached so they are only read once. */
+    instance. A low-priority thread lists the folders (including subfolders) whenever a rescan is requested, then reads
+    each new or changed file's details, which are cached so they are only read once. Nothing here blocks the caller. */
 class ReferenceLibrary final : public juce::ChangeBroadcaster,
                                private juce::Thread
 {
@@ -49,8 +49,12 @@ public:
 
     static inline const juce::String audioExtensions { "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.m4a;*.aac;*.caf" };
 
-    /** The main library folder, created if it doesn't exist; imports are copied here. */
+    /** The main library folder; imports are copied here. */
     juce::File getRoot() const { return root; }
+
+    /** Creates the main folder if it doesn't exist yet. Called when the editor opens, so plugin scans and offline
+        renders never create folders. */
+    void createRootIfMissing() const { root.createDirectory(); }
 
     /** Folders added with addFolder, which are indexed where they are. */
     juce::Array<juce::File> getFolders() const;
@@ -64,14 +68,15 @@ public:
     /** True if the file is inside the main folder or an added folder. */
     bool contains (const juce::File& file) const;
 
-    /** Re-reads the folder to pick up added, removed and changed files, then reads any missing details. */
+    /** Asks the library thread to re-read the folders, picking up added, removed and changed files, then to read any
+        missing details. Returns at once; listeners hear when the list changes. */
     void rescan();
 
     /** Every entry, by name. */
     std::vector<LibraryEntry> getEntries() const;
 
-    /** True while file details are still being read. */
-    bool isReading() const { return isThreadRunning(); }
+    /** True until the latest rescan has listed the folders and read every new file's details. */
+    bool isReading() const { return completedScan.load() != requestedScan.load(); }
 
     /** Longest stretch of a file that is analysed. */
     static constexpr double maxAnalysisSeconds = 15.0 * 60.0;
@@ -110,6 +115,8 @@ private:
     };
 
     void run() override;
+    void scan();
+    void readDetails (juce::AudioFormatManager&, int scanNumber);
     void loadState();
     void saveCache() const;
     void saveFolders() const;
@@ -120,6 +127,7 @@ private:
     std::vector<LibraryEntry> entries;
     std::map<juce::String, Details> cache;
     juce::Array<juce::File> folders;
+    std::atomic<int> requestedScan { 0 }, completedScan { 0 };
     juce::CriticalSection importLock;
     std::set<juce::String> importsRunning;
     std::map<juce::String, juce::File> importResults;

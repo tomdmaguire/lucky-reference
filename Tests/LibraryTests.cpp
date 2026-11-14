@@ -73,7 +73,7 @@ public:
         {
             {
                 ReferenceLibrary library (root, state);
-                expect (! library.isReading(), "nothing new to read");
+                expect (waitUntilRead (library));
                 const auto entries = library.getEntries();
                 const auto* bravo = findEntry (entries, "Bravo.wav");
                 expectWithinAbsoluteError (bravo->seconds, 2.0, 0.01);
@@ -139,16 +139,30 @@ public:
 
             ReferenceLibrary library (root, state);
             expectEquals (library.getFolders().size(), 1, "added folders are remembered");
+            expect (waitUntilRead (library));
             expect (findEntry (library.getEntries(), golf.getFullPathName()) != nullptr);
             library.removeFolder (albums);
+            expect (waitUntilRead (library));
             expect (findEntry (library.getEntries(), golf.getFullPathName()) == nullptr);
             expect (golf.existsAsFile(), "removing a folder leaves its files alone");
             expect (! library.contains (golf));
         }
 
+        beginTest ("Rescans run on the library's thread and never create the main folder");
+        {
+            const auto missing = folder.getChildFile ("Not Yet");
+            ReferenceLibrary library (missing, state);
+            library.rescan();
+            expect (waitUntilRead (library));
+            expect (! missing.exists(), "scanning leaves a missing main folder alone");
+            library.createRootIfMissing();
+            expect (missing.isDirectory());
+        }
+
         beginTest ("Search needs every word in the name or folder, ignoring case");
         {
             ReferenceLibrary library (root, state);
+            expect (waitUntilRead (library));
             const auto matches = [&] (const juce::String& text)
             {
                 juce::StringArray keys;

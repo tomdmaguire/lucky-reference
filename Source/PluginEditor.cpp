@@ -59,6 +59,8 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
       slotAttachment (parameter (processor, LuckyReferenceProcessor::slotId), [this] (float value) { selectedSlot = juce::roundToInt (value); syncControls(); }),
       matchAttachment (parameter (processor, LuckyReferenceProcessor::matchId), [this] (float value) { matchSwitch.setOn (value > 0.5f); repaint(); })
 {
+    owner.getLibrary().createRootIfMissing();
+
     for (int i = 0; i < LuckyReferenceProcessor::numSlots; ++i)
     {
         rows[static_cast<size_t> (i)] = std::make_unique<lucky::SlotRow> (owner, i);

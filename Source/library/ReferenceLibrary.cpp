@@ -6,7 +6,7 @@ namespace lucky
 
 namespace
 {
-constexpr int cacheVersion = 2;
+constexpr int cacheVersion = 3;
 constexpr int analysisChunk = 1 << 16;
 
 juce::var profileToVar (const TonalProfile& profile)
@@ -69,6 +69,7 @@ ReferenceLibrary::ReferenceLibrary (const juce::File& libraryRoot, const juce::F
 {
     loadState();
     rescan();
+    startThread (juce::Thread::Priority::low);
 }
 
 ReferenceLibrary::~ReferenceLibrary()
@@ -126,9 +127,36 @@ juce::String ReferenceLibrary::cacheKey (const juce::File& file, const juce::Str
 
 void ReferenceLibrary::rescan()
 {
-    stopThread (5000);
-    root.createDirectory();
+    ++requestedScan;
+    notify();
+}
 
+void ReferenceLibrary::run()
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+
+    while (! threadShouldExit())
+    {
+        const auto scanNumber = requestedScan.load();
+        if (scanNumber == completedScan.load())
+        {
+            wait (-1);
+            continue;
+        }
+
+        scan();
+        readDetails (formats, scanNumber);
+        if (requestedScan.load() == scanNumber)
+        {
+            completedScan = scanNumber;
+            sendChangeMessage();
+        }
+    }
+}
+
+void ReferenceLibrary::scan()
+{
     std::vector<LibraryEntry> scanned;
     const auto scan = [this, &scanned] (const juce::File& folder, bool isMain)
     {
@@ -154,37 +182,35 @@ void ReferenceLibrary::rescan()
     for (const auto& folder : getFolders())
         scan (folder, false);
 
-    auto needsReading = false;
+    std::vector<juce::String> keys;
+    keys.reserve (scanned.size());
+    for (const auto& entry : scanned)
+        keys.push_back (cacheKey (entry.file, entry.key));
+
     {
         const juce::ScopedLock scope (lock);
-        for (auto& entry : scanned)
+        for (size_t i = 0; i < scanned.size(); ++i)
         {
-            if (const auto it = cache.find (cacheKey (entry.file, entry.key)); it != cache.end())
+            if (const auto it = cache.find (keys[i]); it != cache.end())
             {
-                entry.format = it->second.format;
-                entry.seconds = it->second.seconds;
-                entry.profile = it->second.profile;
-                entry.analysed = true;
-            }
-            else
-            {
-                needsReading = true;
+                scanned[i].format = it->second.format;
+                scanned[i].seconds = it->second.seconds;
+                scanned[i].profile = it->second.profile;
+                scanned[i].analysed = true;
             }
         }
-        std::sort (scanned.begin(), scanned.end(), libraryOrder);
-        entries = std::move (scanned);
     }
 
+    std::sort (scanned.begin(), scanned.end(), libraryOrder);
+    {
+        const juce::ScopedLock scope (lock);
+        entries = std::move (scanned);
+    }
     sendChangeMessage();
-    if (needsReading)
-        startThread (juce::Thread::Priority::low);
 }
 
-void ReferenceLibrary::run()
+void ReferenceLibrary::readDetails (juce::AudioFormatManager& formats, int scanNumber)
 {
-    juce::AudioFormatManager formats;
-    formats.registerBasicFormats();
-
     std::vector<LibraryEntry> snapshot;
     {
         const juce::ScopedLock scope (lock);
@@ -195,8 +221,10 @@ void ReferenceLibrary::run()
     auto lastNotice = juce::Time::getMillisecondCounter();
     for (const auto& entry : snapshot)
     {
-        if (threadShouldExit())
+        if (threadShouldExit() || requestedScan.load() != scanNumber)
             break;
+        if (entry.analysed)
+            continue;
 
         const auto key = cacheKey (entry.file, entry.key);
         {
@@ -236,7 +264,6 @@ void ReferenceLibrary::run()
 
     if (cacheChanged)
         saveCache();
-    sendChangeMessage();
 }
 
 std::vector<LibraryEntry> ReferenceLibrary::getEntries() const
