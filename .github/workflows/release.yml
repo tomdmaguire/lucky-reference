@@ -31,9 +31,15 @@ jobs:
           mkdir -p "dist/$package"
           cp -R "$artefacts/VST3/Lucky Reference.vst3" "dist/$package/"
           cp -R "$artefacts/AU/Lucky Reference.component" "dist/$package/"
+          for bundle in "dist/$package/Lucky Reference.vst3" "dist/$package/Lucky Reference.component"; do
+            mkdir -p "$bundle/Contents/Resources"
+            cp LICENSE "$bundle/Contents/Resources/LICENSE.txt"
+            cp THIRD-PARTY-NOTICES.txt "$bundle/Contents/Resources/THIRD-PARTY-NOTICES.txt"
+          done
           codesign --force --deep --sign - "dist/$package/Lucky Reference.vst3"
           codesign --force --deep --sign - "dist/$package/Lucky Reference.component"
           cp README.md CHANGELOG.md LICENSE "dist/$package/"
+          cp THIRD-PARTY-NOTICES.txt "dist/$package/THIRD-PARTY-NOTICES.txt"
           cp Resources/Fonts/OFL.txt "dist/$package/Barlow-OFL.txt"
           cp packaging/INSTALL.txt "dist/$package/INSTALL.txt"
           (cd dist && ditto -c -k --keepParent "$package" "$package.zip")
