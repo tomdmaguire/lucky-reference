@@ -50,6 +50,7 @@ private:
     float referenceFast() const;
 
     LuckyReferenceProcessor& owner;
+    juce::TooltipWindow tooltips { this, 500 };
     std::array<std::unique_ptr<lucky::SlotRow>, LuckyReferenceProcessor::numSlots> rows;
     /** A transparent layer that paints through a callback, so text can sit above the ripples. */
     struct PaintLayer final : juce::Component

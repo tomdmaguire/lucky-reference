@@ -114,8 +114,7 @@ LuckyReferenceView::LuckyReferenceView (LuckyReferenceProcessor& processor)
     };
     addAndMakeVisible (sourceSwitch);
 
-    matchSwitch.setTooltip ("On: the reference is turned to your mix's loudness, for a fair comparison. "
-                            "Off: it plays at its real level, so you can hear the loudness gap.");
+    matchSwitch.setTooltip ("Turns the reference to your mix's loudness, for a fair comparison.");
     matchSwitch.onToggle = [this] (bool on)
     {
         grabKeyboardFocus();
