@@ -77,7 +77,15 @@ private:
     const size_t maxFrames, maxPunchBlocks;
     juce::dsp::FFT fft;
     juce::dsp::WindowingFunction<float> window;
-    std::array<std::pair<int, int>, TonalProfile::numBands> bandBins {};
+    /** The FFT bins a band covers, from `first`, each weighted by how much of the bin lies inside the band, so a
+        band's energy doesn't depend on how its edges fall between bins at a given sample rate. */
+    struct BandBins
+    {
+        int first = 0;
+        std::vector<float> weights;
+    };
+
+    std::array<BandBins, TonalProfile::numBands> bandBins {};
     std::vector<float> input, scratch;
     int inputFill = 0;
     std::deque<Frame> frames;

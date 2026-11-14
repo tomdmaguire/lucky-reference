@@ -101,9 +101,16 @@ TonalAnalyser::TonalAnalyser (double sampleRate, double windowSeconds)
     for (int band = 0; band < TonalProfile::numBands; ++band)
     {
         const auto centre = TonalProfile::bandCentreHz (band);
-        const auto low = std::min (lastBin, static_cast<int> (std::ceil (centre * std::pow (2.0, -1.0 / 6.0) / binHz)));
-        const auto high = std::min (lastBin, static_cast<int> (std::floor (centre * std::pow (2.0, 1.0 / 6.0) / binHz)));
-        bandBins[static_cast<size_t> (band)] = { low, std::max (low, high) };
+        const auto lowHz = centre * std::pow (2.0, -1.0 / 6.0), highHz = centre * std::pow (2.0, 1.0 / 6.0);
+        const auto first = std::clamp (static_cast<int> (std::floor (lowHz / binHz + 0.5)), 0, lastBin);
+        const auto last = std::clamp (static_cast<int> (std::floor (highHz / binHz + 0.5)), first, lastBin);
+        auto& bins = bandBins[static_cast<size_t> (band)];
+        bins.first = first;
+        for (int bin = first; bin <= last; ++bin)
+        {
+            const auto overlap = std::min (highHz, (bin + 0.5) * binHz) - std::max (lowHz, (bin - 0.5) * binHz);
+            bins.weights.push_back (static_cast<float> (std::max (0.0, overlap) / binHz));
+        }
     }
 }
 
@@ -150,8 +157,12 @@ void TonalAnalyser::analyseFrame()
     for (size_t band = 0; band < bandBins.size(); ++band)
     {
         auto energy = 0.0f;
-        for (int bin = bandBins[band].first; bin <= bandBins[band].second; ++bin)
-            energy += scratch[static_cast<size_t> (bin)] * scratch[static_cast<size_t> (bin)];
+        const auto& bins = bandBins[band];
+        for (size_t i = 0; i < bins.weights.size(); ++i)
+        {
+            const auto magnitude = scratch[static_cast<size_t> (bins.first) + i];
+            energy += bins.weights[i] * magnitude * magnitude;
+        }
         frame.bandEnergy[band] = energy;
     }
 

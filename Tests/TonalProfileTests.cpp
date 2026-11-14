@@ -103,6 +103,22 @@ int band (double hz)
             return i;
     return TonalProfile::numBands - 1;
 }
+/** The same deterministic broadband tone cluster rendered at any rate: 600 log-spaced sines from 25 Hz to 14 kHz. */
+std::vector<float> toneCluster (double sampleRate, double seconds)
+{
+    constexpr int tones = 600;
+    std::vector<float> samples (static_cast<size_t> (seconds * sampleRate));
+    juce::Random random (7);
+    for (int t = 0; t < tones; ++t)
+    {
+        const auto hz = 25.0 * std::pow (14000.0 / 25.0, t / static_cast<double> (tones - 1));
+        const auto phase = random.nextDouble() * juce::MathConstants<double>::twoPi;
+        const auto step = juce::MathConstants<double>::twoPi * hz / sampleRate;
+        for (size_t i = 0; i < samples.size(); ++i)
+            samples[i] += static_cast<float> (0.002 * std::sin (phase + step * static_cast<double> (i)));
+    }
+    return samples;
+}
 } // namespace
 
 class TonalProfileTests final : public juce::UnitTest
@@ -115,6 +131,23 @@ public:
         beginTest ("Bands run from 31.5 Hz to 12.5 kHz");
         expectWithinAbsoluteError (TonalProfile::bandCentreHz (0), 31.25, 0.01);
         expectWithinAbsoluteError (TonalProfile::bandCentreHz (TonalProfile::numBands - 1), 12699.2, 1.0);
+
+        beginTest ("The same music gives the same profile at 44.1 and 48 kHz");
+        {
+            const auto profileAt = [] (double sampleRate)
+            {
+                const auto music = toneCluster (sampleRate, 6.0);
+                TonalAnalyser analyser (sampleRate);
+                analyser.process (music.data(), static_cast<int> (music.size()));
+                return *analyser.getProfile();
+            };
+            const auto cd = profileAt (44100.0), video = profileAt (48000.0);
+            auto worst = 0.0f;
+            for (int band = 0; band < TonalProfile::numBands; ++band)
+                worst = std::max (worst, std::abs (cd.bandsDb[static_cast<size_t> (band)] - video.bandsDb[static_cast<size_t> (band)]));
+            logMessage ("largest band difference between 44.1 and 48 kHz: " + juce::String (worst, 2) + " dB");
+            expectLessThan (worst, 0.3f);
+        }
 
         beginTest ("Loudness has no effect");
         {
