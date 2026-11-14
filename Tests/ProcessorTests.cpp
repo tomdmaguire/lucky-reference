@@ -125,7 +125,7 @@ public:
             expect (referenceOn(), "the switch still works from the host with the window closed");
         }
 
-        beginTest ("Exports always contain the mix");
+        beginTest ("Offline exports always contain the mix");
         {
             auto processor = makeProcessor();
             PlayingHead head;

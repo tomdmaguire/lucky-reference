@@ -382,7 +382,9 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
         levels = "Mix " + signedDb (mix, "LUFS") + "  " + middleDot + "  Ref " + signedDb (reference, "LUFS");
         difference = std::abs (rounded) < 0.1f ? "Same loudness as " + refName
                                                : "Your mix is " + juce::String (std::abs (rounded), 1) + (rounded < 0.0f ? " dB quieter" : " dB louder");
-        if (matching)
+        if (matching && std::abs (mix - reference) > ReferenceEngine::maximumGainDb)
+            helper = "Too far apart to match fully (" + juce::String (juce::roundToInt (ReferenceEngine::maximumGainDb)) + " dB max)";
+        else if (matching)
             helper = "Compared with " + refName + "'s original loudness";
     }
 
@@ -442,7 +444,7 @@ void LuckyReferenceView::showMenu()
 
     menu.addSeparator();
     menu.addItem ("Put it last on your master, after any limiter", false, false, [] {});
-    menu.addItem ("Exports always contain your mix", false, false, [] {});
+    menu.addItem ("Offline exports always contain your mix", false, false, [] {});
     auto& library = owner.getLibrary();
     const auto root = library.getRoot();
     juce::PopupMenu folders;
