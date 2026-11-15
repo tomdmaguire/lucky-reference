@@ -261,12 +261,10 @@ void LuckyReferenceView::paint (juce::Graphics& g)
     g.fillRect (topBar);
 
     auto logo = topBar.removeFromLeft (logoWidth).reduced (16, 0).toFloat();
-    const auto dim = theme::textDim.withAlpha (0.35f);
-    segment::paint (g, logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f), segment::letterA, referenceOn ? dim : accent);
-    segment::paint (g, logo.removeFromLeft (22.0f).withSizeKeepingCentre (26.0f, 26.0f), segment::letterB, referenceOn ? accent : dim);
+    ripple::paint (g, logo.removeFromLeft (28.0f).withSizeKeepingCentre (28.0f, 28.0f), accent);
     g.setColour (theme::text);
     g.setFont (theme::labelFont (15.0f).withStyle ("Bold"));
-    g.drawText ("LUCKY REFERENCE", logo.withTrimmedLeft (12.0f), juce::Justification::centredLeft);
+    g.drawText ("LUCKY REFERENCE", logo.withTrimmedLeft (10.0f), juce::Justification::centredLeft);
 
     g.setColour (theme::background);
     for (const auto x : { logoWidth, getWidth() - iconWidth - tabWidth * 2 - 1, getWidth() - iconWidth })
