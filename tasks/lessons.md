@@ -1,6 +1,6 @@
 # Lessons
 
-Carried over from Lucky Seven where they apply.
+Carried over from Lucky Reverb where they apply.
 
 ## Async-loading test fixtures
 - **Rule:** when waiting on async state, wait for the exact expected value (e.g. a buffer length), not "non-zero".
@@ -10,7 +10,7 @@ Carried over from Lucky Seven where they apply.
 - **Check first:** run `pgrep -lf "Ableton Live"` before any full build; the plugin build installs itself, so a full build while the host has the plugin loaded swaps the binary under it.
 
 ## Match a sibling product's UI conventions before building
-- **Mistake:** Lucky Reference's first UI copied Lucky Seven's colours but not its structure (outlined panels, top bar separators, three-dot icon, Window size menu, scaling), so it felt like a different product.
+- **Mistake:** Lucky Reference's first UI copied Lucky Reverb's colours but not its structure (outlined panels, top bar separators, three-dot icon, Window size menu, scaling), so it felt like a different product.
 - **Rule:** when building a sibling, open its screenshots and editor code first and list the conventions to carry over; review snapshots side by side with the sibling's.
 
 ## Benchmark whole-file work on realistic lengths
@@ -38,7 +38,7 @@ Carried over from Lucky Seven where they apply.
 
 ## Keep a browser independent of hidden state
 - **Mistake:** the library loaded into "the selected slot" (shown as "INTO REF 1"), so what a double-click did depended on state chosen on another screen; SUGGEST and favourites added features nobody needed.
-- **Rule:** a browser says where things go on the thing itself (per-row 1 2 3 buttons), every panel has an obvious way back (tabs plus the logo, as in Lucky Seven), and the main screen works without the power-user feature.
+- **Rule:** a browser says where things go on the thing itself (per-row 1 2 3 buttons), every panel has an obvious way back (tabs plus the logo, as in Lucky Reverb), and the main screen works without the power-user feature.
 
 ## Never take text focus in a plug-in unasked
 - **Mistake:** the library focused its search box on open, so the host's space bar typed into it instead of stopping playback.

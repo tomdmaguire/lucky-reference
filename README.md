@@ -2,7 +2,7 @@
 
 Compare your mix against reference tracks at matched loudness. Lucky Reference sits last on your master track: load up to three references, choose the section of each to compare, and flip between your mix and a reference with one switch. A reference library keeps your tracks one search away and ranks them by how close they sound to your mix.
 
-**[Website and download](https://tomdmaguire.github.io/lucky-reference/)** · a sibling of [Lucky Seven](https://github.com/tomdmaguire/lucky-seven) · product spec in [`docs/spec.md`](docs/spec.md)
+**[Website and download](https://tomdmaguire.github.io/lucky-reference/)** · a sibling of [Lucky Reverb](https://github.com/tomdmaguire/lucky-reverb) · product spec in [`docs/spec.md`](docs/spec.md)
 
 ![Lucky Reference with three references loaded, reference 2 playing and the readout saying the mix is 4.0 dB quieter](docs/assets/reference.png)
 

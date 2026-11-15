@@ -7,7 +7,7 @@
 namespace lucky
 {
 
-/** Lucky Seven's map ripples applied to the A/B switch: every hit in the signal being heard sends a circle out from the
+/** Lucky Reverb's map ripples applied to the A/B switch: every hit in the signal being heard sends a circle out from the
     switch's knob that slowly grows and fades, so several faint circles overlap like a radar, and a soft glow behind
     the knob follows the level. The ripples come from wherever the knob is, so they slide across when you switch. */
 class RadarRipples final : public juce::Component,

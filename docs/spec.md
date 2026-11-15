@@ -7,7 +7,7 @@ A reference plugin for the master track. Load up to three reference tracks, pick
 - For mid-to-advanced producers and mix engineers.
 - A listening tool, not an analyser. It makes the comparison fair (same loudness, same section, instant switch) and leaves the judgement to your ears.
 - Nothing it doesn't need. Every control on screen is used in normal referencing.
-- A sibling of Lucky Seven: same visual family, same "few controls, done well" approach.
+- A sibling of Lucky Reverb: same visual family, same "few controls, done well" approach.
 
 ## Problem it replaces
 
@@ -32,7 +32,7 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - Formats: WAV, AIFF, FLAC, MP3, M4A/AAC (CoreAudio decoders on macOS).
 - Files are decoded on a background thread, resampled to the host rate, and held in memory as stereo. Mono files are duplicated to both channels; files with more than two channels use the first two.
 - Maximum length: 15 minutes.
-- Each slot has a colour from the Lucky family palette: slot 1 is Lucky Seven's gold, slot 2 pink, slot 3 green.
+- Each slot has a colour from the Lucky family palette: slot 1 is Lucky Reverb's gold, slot 2 pink, slot 3 green.
 - Browsing for a file starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
 - References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. Keeping references in the library gives them a stable home (see Reference library). A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
 - Closing the plugin window switches back to the mix, so a reference never keeps playing out of sight. Switching from the host with the window closed still works.
@@ -98,9 +98,9 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 
 ### 9. Reference library
 
-- The main folder, `~/Music/Lucky Reference/References`, is created if missing. More folders can be added from the three-dot menu (**Library folders** › "Add a folder...", as in Lucky Seven); they are indexed where they are, never copied, and each can be shown in Finder or removed (its files stay put). The added folders are kept in `folders.json` next to the cache. Subfolders are included and shown as a quiet label next to each track (an added folder's tracks show its name).
+- The main folder, `~/Music/Lucky Reference/References`, is created if missing. More folders can be added from the three-dot menu (**Library folders** › "Add a folder...", as in Lucky Reverb); they are indexed where they are, never copied, and each can be shown in Finder or removed (its files stay put). The added folders are kept in `folders.json` next to the cache. Subfolders are included and shown as a quiet label next to each track (an added folder's tracks show its name).
 - Shared by every instance. A rescan lists the folders (when the library opens, then every 5 s while it is open, or from "Rescan all folders"), and a low-priority thread reads each new or changed file's format and length once. The results are cached in `~/Library/Application Support/Lucky Reference/library-cache.json`, keyed by path, size and modification date.
-- **LIBRARY tab:** REFS and LIBRARY tabs sit next to the three-dot menu, as Lucky Seven's MAP and LIST do, and the logo returns to REFS. The library covers the slot rows; the stage stays live, so you can keep switching while you browse. It doesn't depend on which slot is selected.
+- **LIBRARY tab:** REFS and LIBRARY tabs sit next to the three-dot menu, as Lucky Reverb's MAP and LIST do, and the logo returns to REFS. The library covers the slot rows; the stage stays live, so you can keep switching while you browse. It doesn't depend on which slot is selected.
   - Search box: every word must appear in the track name or its folder. It only takes keyboard focus when clicked, and clicking anywhere else in the library gives focus back to the list, so keys the library doesn't use (such as the host's space bar) still reach the host. Up and down move through the results, and Escape clears the search, then returns to REFS.
   - Each row: name, folder, format badge, length, and **1 2 3** buttons in the slots' colours. Clicking one loads the track into that slot and stays in the library, so all three can be filled in a row; a filled button shows the slot already holds the track. If the slot already holds a different track, a card over the list asks first ("Replace “Track” in reference 2?"), adding that it isn't in your library when that's so, since it would be hard to find again; Enter replaces and Escape cancels. With the list focused, the 1, 2 and 3 keys do the same.
   - Double-click or Return loads into the first empty slot; when all three are full, the header says to use 1, 2 or 3.
@@ -136,7 +136,7 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Structure copied from Lucky Seven: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the REFS and LIBRARY tabs and the three-dot menu (window size, library folders, placement hints, remove all references). The logo returns to REFS.
+- Structure copied from Lucky Reverb: a fixed 900×600 view scaled to the window (75–200%, fixed aspect ratio), a **Window size** menu (100/125/150/175%) and a remembered scale; the top bar has separators, the REFS and LIBRARY tabs and the three-dot menu (window size, library folders, placement hints, remove all references). The logo returns to REFS.
 - Three outlined slot rows (100 px at 100% scale): waveform with coloured loop region, a playhead on the selected slot only (the others keep time silently), file name, a format badge, loop length.
 - The format badge makes a lossy reference obvious: "MP3 · 192 kbps" (bitrate from the file header) for MP3, AAC, Ogg and Opus, and lossy M4A; just "WAV", "AIFF", "FLAC" or lossless "M4A" (ALAC) otherwise. A lossy file has a softer top end, which is worth knowing before matching your mix to it.
 - The stage: readout on the left, the A/B switch in the centre with the radar ripples behind it, LEVEL MATCH on the right, and a shortcut hint underneath drawn as keycaps. The readout's two main lines, the switch and LEVEL MATCH share one centre line.
@@ -145,15 +145,15 @@ Saved with the project: file paths, the loop for each slot, and the `reference`,
 
 ### Visual delight
 
-- **Radar ripples:** Lucky Seven's map ripples applied to the switch. Each hit in the audible signal (its 25 ms level jumping relative to the mix loudness) sends a faint circle out from the knob that grows and fades over 2.6 s, so a few overlap like a radar; a soft glow behind the knob follows the level. Every switch sends a stronger ripple in the new source's colour. Meant to be felt more than watched. (A halo design around the switch was tried and dropped in favour of this.)
+- **Radar ripples:** Lucky Reverb's map ripples applied to the switch. Each hit in the audible signal (its 25 ms level jumping relative to the mix loudness) sends a faint circle out from the knob that grows and fades over 2.6 s, so a few overlap like a radar; a soft glow behind the knob follows the level. Every switch sends a stronger ripple in the new source's colour. Meant to be felt more than watched. (A halo design around the switch was tried and dropped in favour of this.)
 - **Springy switch:** the knob slides with a slight overshoot and stretch.
-- **Logo as the switch indicator:** a seven-segment "A" while you are on the mix and a lowercase "b" on a reference. The seven-segment display is the family brand; Lucky Seven shows "7", Lucky Reference shows "Ab".
+- **Logo as the switch indicator:** the family's ripple logo, in the mix colour while you are on the mix and in the selected slot's colour on a reference.
 - **Colour sweep:** the UI accent moves from a neutral mix colour to the selected reference's colour when you flip.
 - **Waveforms** that brighten inside the loop and dim outside it, with a moving playhead.
 
 ## Technical notes
 
-- JUCE 9, CMake + Ninja, JUCE fetched via FetchContent. Build setup, Theme and LookAndFeel copied from Lucky Seven as a starting point. Apple Silicon and Intel, VST3 and AU.
+- JUCE 9, CMake + Ninja, JUCE fetched via FetchContent. Build setup, Theme and LookAndFeel copied from Lucky Reverb as a starting point. Apple Silicon and Intel, VST3 and AU.
 - Zero latency.
 - **From JUCE:** plugin wrapper, parameters and state, audio file decoding (`AudioFormatManager` with CoreAudio formats), threads, GUI.
 - **From macOS:** sample-rate conversion with AudioToolbox's `AudioConverter` (normal complexity, max quality); a 4-minute song loads in about 0.3 s.
@@ -172,7 +172,7 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 
 ## Later
 
-- A shared Lucky UI library for both plugins: theme, look and feel, seven-segment glyphs, menu icon and the scaling editor are currently copied from Lucky Seven.
+- A shared Lucky UI library for both plugins: theme, look and feel, the logo, menu icon and the scaling editor now come from `../lucky-labs`.
 
 ## Performance (measured)
 
@@ -186,7 +186,7 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 
 1. **No audition while the transport is stopped** in v1.
 2. **References run in parallel** with the transport, like tracks in a session.
-3. **Codes:** manufacturer `Lcky` (shared with Lucky Seven), plugin `Lref`, bundle id `com.luckylabs.luckyreference`.
+3. **Codes:** manufacturer `Lcky` (shared with Lucky Reverb), plugin `Lref`, bundle id `com.luckylabs.luckyreference`.
 4. **Empty selected slot:** switching to it outputs silence, and the readout says the slot is empty.
 
 ## Tests
