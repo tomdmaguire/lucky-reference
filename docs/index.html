@@ -50,7 +50,7 @@
   .brand img { width: 30px; height: 30px; }
   .brand span { font-family: var(--display); font-weight: 600; letter-spacing: 0.14em; font-size: 17px; }
   nav { display: flex; gap: 22px; }
-  nav a { color: var(--dim); text-decoration: none; font-family: var(--display); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; font-size: 14px; }
+  nav a { white-space: nowrap; color: var(--dim); text-decoration: none; font-family: var(--display); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; font-size: 14px; }
   nav a:hover { color: var(--text); }
 
   .hero { padding-block: 72px 40px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; align-items: center; }
@@ -65,17 +65,16 @@
   .button.secondary:hover { border-color: var(--dim); }
   .hero .specs { margin-top: 20px; font-size: 14px; color: var(--dim); }
 
-  /* The plugin's A/b logo, flipping between mix and reference like its switch. */
-  .glyphs { justify-self: center; width: min(100%, 340px); aspect-ratio: 1.25; }
+  /* The Lucky ripple, flipping between your mix's colour and the reference's like the plugin's switch. */
+  .glyphs { justify-self: center; width: min(100%, 300px); aspect-ratio: 1; color: var(--mix); transition: color 0.35s ease; }
+  .glyphs.reference { color: var(--gold); }
   .glyphs svg { width: 100%; height: 100%; overflow: visible; }
-  .glyphs path { fill: none; stroke-width: 5.5; stroke-linecap: round; transition: opacity 0.35s ease, stroke 0.35s ease, filter 0.35s ease; }
-  .glyphs .a path { stroke: var(--mix); }
-  .glyphs .b path { stroke: var(--gold); }
-  .glyphs .off { opacity: 0.1; }
-  .glyphs .on .lit { filter: drop-shadow(0 0 9px color-mix(in srgb, currentColor 55%, transparent)); }
-  .glyphs .a { color: var(--mix); }
-  .glyphs .b { color: var(--gold); }
-  .glyphs g:not(.on) .lit { opacity: 0.16; }
+  .glyphs circle { transition: stroke 0.35s ease, fill 0.35s ease; }
+  .glyphs .ring { fill: none; stroke-width: 2; stroke: currentColor; }
+  .glyphs .ring:nth-of-type(1) { opacity: 0.75; }
+  .glyphs .ring:nth-of-type(2) { opacity: 0.45; }
+  .glyphs .ring:nth-of-type(3) { opacity: 0.2; }
+  .glyphs .dot { fill: currentColor; filter: drop-shadow(0 0 9px color-mix(in srgb, currentColor 55%, transparent)); }
 
   .shot { margin: 8px 0 0; }
   .shot img { border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45); }
@@ -120,12 +119,13 @@
   .notes p { margin: 0; }
 
   footer { border-top: 1px solid var(--line); padding-block: 36px 48px; color: var(--dim); font-size: 14px; }
-  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; }
-  footer p { margin: 0; max-width: 70ch; }
+  footer .wrap { display: grid; gap: 12px; }
+  footer .lead { color: var(--text); }
+  footer p { margin: 0; }
 
   @media (max-width: 860px) {
     .hero { grid-template-columns: minmax(0, 1fr); padding-top: 48px; gap: 24px; }
-    .glyphs { order: -1; width: 180px; justify-self: start; }
+    .glyphs { order: -1; width: 150px; justify-self: start; }
     .features, .notes, .split { grid-template-columns: minmax(0, 1fr); }
     nav { gap: 16px; }
   }
@@ -143,8 +143,8 @@
       <a class="optional" href="#features">Features</a>
       <a class="optional" href="#library">Library</a>
       <a class="optional" href="#how">How to use</a>
-      <a href="#install">Install</a>
-      <a href="https://github.com/tomdmaguire/lucky-reference">GitHub</a>
+      <a class="optional" href="#install">Install</a>
+      <a href="https://tomdmaguire.github.io/lucky-labs/">More plugins</a>
     </nav>
   </div>
 </header>
@@ -153,7 +153,7 @@
   <div class="wrap">
     <div class="hero">
       <div>
-        <span class="label">Free reference plugin for macOS &middot; VST&reg;3 &amp; AU</span>
+        <span class="label">Free reference plugin for macOS &middot; VST3 &amp; AU</span>
         <h1>No-nonsense referencing.</h1>
         <p><strong>A/B your mix against the records you love, at the same loudness, with one switch.</strong></p>
         <div class="actions">
@@ -163,19 +163,8 @@
         <p class="specs">Free and open source &middot; Apple Silicon &amp; Intel &middot; macOS 13 or newer</p>
       </div>
 
-      <div class="glyphs" aria-hidden="true">
-        <svg viewBox="0 0 80 64">
-          <g class="a on" transform="translate(-14 0)">
-            <path class="lit" d="M22 14 H42"/><path class="lit" d="M45 17 V30"/><path class="lit" d="M45 35 V48"/>
-            <path class="lit" d="M19 35 V48"/><path class="lit" d="M19 17 V30"/><path class="lit" d="M22 32.5 H42"/>
-            <path class="off" d="M22 51 H42"/>
-          </g>
-          <g class="b" transform="translate(30 0)">
-            <path class="lit" d="M45 35 V48"/><path class="lit" d="M22 51 H42"/><path class="lit" d="M19 35 V48"/>
-            <path class="lit" d="M19 17 V30"/><path class="lit" d="M22 32.5 H42"/>
-            <path class="off" d="M22 14 H42"/><path class="off" d="M45 17 V30"/>
-          </g>
-        </svg>
+      <div class="glyphs reference" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><circle class="ring" cx="32" cy="32" r="11.5"/><circle class="ring" cx="32" cy="32" r="18"/><circle class="ring" cx="32" cy="32" r="24.5"/><circle class="dot" cx="32" cy="32" r="5"/></svg>
       </div>
     </div>
 
@@ -346,7 +335,7 @@
         </div>
         <div>
           <h3>Open source</h3>
-          <p>The code is on <a href="https://github.com/tomdmaguire/lucky-reference">GitHub</a> under the AGPLv3. Bug reports and ideas are welcome as issues.</p>
+          <p>The code is on <a href="https://github.com/tomdmaguire/lucky-reference">GitHub</a> under the AGPLv3. Bug reports, ideas and pull requests are welcome.</p>
         </div>
       </div>
     </div>
@@ -355,9 +344,9 @@
 
 <footer>
   <div class="wrap">
+    <p class="lead">Lucky Reference is part of <a href="https://tomdmaguire.github.io/lucky-labs/">Lucky Labs</a>, alongside <a href="https://tomdmaguire.github.io/lucky-reverb/">Lucky Reverb</a> and <a href="https://tomdmaguire.github.io/lucky-compressor/">Lucky Compressor</a>. The source is on <a href="https://github.com/tomdmaguire/lucky-reference">GitHub</a>.</p>
     <p>Lucky Reference by <a href="https://github.com/tomdmaguire">Tom Maguire</a>. Free and open source under the AGPLv3. Built with JUCE; interface set in Barlow (SIL Open Font License).</p>
     <p>VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc. Ableton is a trademark of Ableton AG. Other product names are trademarks of their owners; Lucky Reference isn't affiliated with or endorsed by them.</p>
-    <p><a href="https://github.com/tomdmaguire/lucky-reference">Source on GitHub</a></p>
   </div>
 </footer>
 
@@ -380,10 +369,10 @@
     });
   });
 
-  // Flip the A/b logo every few seconds, like the plugin's switch.
-  const glyphs = document.querySelectorAll(".glyphs g");
-  if (glyphs.length === 2 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    setInterval(() => glyphs.forEach((glyph) => glyph.classList.toggle("on")), 2400);
+  // Flip the ripple between mix and reference every few seconds, like the plugin's switch.
+  const glyphs = document.querySelector(".glyphs");
+  if (glyphs && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    setInterval(() => glyphs.classList.toggle("reference"), 2400);
   }
 </script>
 </body>
