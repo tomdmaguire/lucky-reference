@@ -346,6 +346,13 @@ void LuckyReferenceView::paintReadout (juce::Graphics& g, juce::Rectangle<float>
         difference = "Drop or choose a track for reference " + juce::String (selectedSlot + 1);
         mainColour = theme::textDim;
     }
+    else if (! std::isfinite (mix) && engine.isMixSilent())
+    {
+        levels = "Your mix is silent";
+        difference = matching ? refName + " plays at " + signedDb (ReferenceEngine::fallbackMixLufs, "LUFS") + " for now"
+                              : "Turn your mix up to compare";
+        mainColour = theme::textDim;
+    }
     else if (! std::isfinite (mix))
     {
         levels = engine.isPlaying() ? "Measuring..." : "Waiting for your mix";

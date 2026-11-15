@@ -181,7 +181,7 @@ void playFor (LuckyReferenceProcessor& processor, PlayingHead& head, const juce:
     }
 }
 
-/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "nomatch", "radar" (flips sources to
+/** Renders the editor to a PNG. Modes: "empty", "loaded", "reference", "measuring", "silent" (a silent mix playing), "nomatch", "radar" (flips sources to
     leave ripples), "playing" (flips to reference 2 while music plays; settleSeconds sets how long after the flip to capture),
     "library" (the library panel over the slots), "library-empty" (the panel with nothing in the library), "closest" (the panel ranked against a played mix), "closest-waiting" (the panel before enough of the mix has played), "closest-update" (offering UPDATE after the mix changed), "library-replace" (asking before replacing a loaded reference) and "outside" (references from outside the library, offering ADD TO LIBRARY). */
 int snapshot (const juce::File& output, const juce::String& mode, double settleSeconds)
@@ -222,7 +222,7 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
         processor->setLoop (1, { 120.0, 140.0 });
     }
 
-    if (mode == "reference" || mode == "nomatch")
+    if (mode == "reference" || mode == "nomatch" || mode == "silent")
     {
         setParameter (*processor, LuckyReferenceProcessor::slotId, 1.0f);
         setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
@@ -232,7 +232,9 @@ int snapshot (const juce::File& output, const juce::String& mode, double settleS
 
     if (mode != "measuring" && mode != "empty")
     {
-        const auto mix = fakeSong ({ -3 }, 6.0, 4);
+        auto mix = fakeSong ({ -3 }, 6.0, 4);
+        if (mode == "silent")
+            mix.clear();
         juce::MidiBuffer midi;
         juce::AudioBuffer<float> work (mix);
         for (int start = 0; start + blockSize <= work.getNumSamples(); start += blockSize)
@@ -331,7 +333,7 @@ int main (int argc, char** argv)
 {
     if (argc < 3)
     {
-        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|nomatch|radar|playing|library|library-empty|library-replace|closest|closest-waiting|closest-update|outside> [settleSeconds]\n";
+        std::cerr << "usage: Snapshot <output.png> <empty|loaded|reference|measuring|silent|nomatch|radar|playing|library|library-empty|library-replace|closest|closest-waiting|closest-update|outside> [settleSeconds]\n";
         return 1;
     }
 

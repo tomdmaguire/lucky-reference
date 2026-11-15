@@ -76,7 +76,7 @@ Measure: **ITU-R BS.1770 gated integrated loudness** (LUFS), the same measure on
 - **Mix:** the gated loudness of the last 10 seconds of the mix, updated every 100 ms. It resets on transport start and on any jump in host position (not on a host loop wrap), so it covers the section you are playing, and turning your mix up or down moves the readout and the matched reference within about 10 seconds.
 - **Gain:** the reference is turned by `mix LUFS − reference LUFS`. Only the reference is ever adjusted; the mix level is never touched.
 - Gain changes ramp over 1 second, so the gain settles smoothly instead of riding the music.
-- Matching starts once 1.5 seconds of non-silent mix have been measured. Before the first estimate of a session, a selected reference stays silent and the readout shows "Measuring" while playing ("Waiting for your mix" until you press play); it then fades in at the matched level, so it never plays at its full, unmatched level. After that, the last estimate is held across stops and jumps until the new section has been measured.
+- Matching starts once 1.5 seconds of non-silent mix have been measured. Before the first estimate of a session, a selected reference plays matched to a safe −18 LUFS (a typical unmastered mix), so it is audible while you set up references against a muted mix but never plays at its full, unmatched level. Once the mix is measured it glides to the real match over the usual 1 second. After that, the last estimate is held across stops and jumps until the new section has been measured.
 - Gain is clamped to ±24 dB. A silent reference loop is not matched.
 - A **LEVEL MATCH** on/off switch (a small cousin of the MIX | REF switch, in the reference's colour when on) turns matching off, so you can hear the real loudness gap (useful for checking a master).
 
@@ -86,6 +86,7 @@ Measure: **ITU-R BS.1770 gated integrated loudness** (LUFS), the same measure on
 - While LEVEL MATCH is on, small helper text underneath says "Compared with Ref 2's original loudness", since what you hear is matched but the numbers are not.
 - The difference rolls to its new value as the measurement settles.
 - Before any measurement: "Waiting for your mix / Press play in your DAW" while stopped, "Measuring... / Keep playing for a few seconds" while playing.
+- When the mix has been silent for half a second while playing and has not been measured yet: "Your mix is silent / Ref 2 plays at −18.0 LUFS for now" (with LEVEL MATCH off: "Turn your mix up to compare").
 
 ### 7. Export safety
 
@@ -188,6 +189,7 @@ Tonal difference curve, timeline lock, mono or side solo, band solo and filters,
 2. **References run in parallel** with the transport, like tracks in a session.
 3. **Codes:** manufacturer `Lcky` (shared with Lucky Reverb), plugin `Lref`, bundle id `com.luckylabs.luckyreference`.
 4. **Empty selected slot:** switching to it outputs silence, and the readout says the slot is empty.
+5. **Silent mix** (every track muted while setting up): references play at the −18 LUFS fallback, and the readout says the mix is silent.
 
 ## Tests
 

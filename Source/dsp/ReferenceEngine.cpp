@@ -40,6 +40,8 @@ void ReferenceEngine::prepare (double rate, int maximumBlockSize)
     for (auto& loudness : referenceLoudness)
         loudness.store (silentLufs);
 
+    silentMixSamples = 0;
+    mixSilent.store (false);
     wasPlaying = false;
     expectedTime.reset();
 }
@@ -98,14 +100,12 @@ void ReferenceEngine::followTransport (const Transport& transport, int numSample
 
 void ReferenceEngine::updateMatching (const Controls& controls, const std::array<const ReferencePlayer::Source*, numSlots>& sources) noexcept
 {
-    const auto hadEstimate = std::isfinite (mixLoudness.load());
     const auto measured = mixMeter.getGatedSeconds();
     if (measured >= minimumMixSeconds && measured > lastMeasuredSeconds)
     {
         lastMeasuredSeconds = measured;
         mixLoudness.store (mixMeter.getIntegrated());
     }
-    const auto firstEstimate = ! hadEstimate && std::isfinite (mixLoudness.load());
 
     const auto matchChanged = controls.match != wasMatching;
     wasMatching = controls.match;
@@ -115,11 +115,11 @@ void ReferenceEngine::updateMatching (const Controls& controls, const std::array
         const auto loudness = sources[slot] != nullptr ? sources[slot]->loudness : silentLufs;
         referenceLoudness[slot].store (loudness);
 
-        const auto mix = mixLoudness.load();
+        const auto mix = std::isfinite (mixLoudness.load()) ? mixLoudness.load() : fallbackMixLufs;
         auto target = gainsDb[slot].getTargetValue();
         if (! controls.match)
             target = 0.0f;
-        else if (std::isfinite (mix) && std::isfinite (loudness))
+        else if (std::isfinite (loudness))
             target = juce::jlimit (-maximumGainDb, maximumGainDb, mix - loudness);
 
         const auto serial = sources[slot] != nullptr ? sources[slot]->serial : 0;
@@ -128,12 +128,12 @@ void ReferenceEngine::updateMatching (const Controls& controls, const std::array
         if (sourceChanged)
             readiness[slot].setCurrentAndTargetValue (0.0f);
 
-        if (matchChanged || firstEstimate || sourceChanged || referenceFaders[slot].isSilent())
+        if (matchChanged || sourceChanged || referenceFaders[slot].isSilent())
             gainsDb[slot].setCurrentAndTargetValue (target);
         else
             gainsDb[slot].setTargetValue (target);
 
-        readiness[slot].setTargetValue (! controls.match || std::isfinite (mix) ? 1.0f : 0.0f);
+        readiness[slot].setTargetValue (1.0f);
     }
 }
 
@@ -160,6 +160,8 @@ void ReferenceEngine::process (juce::AudioBuffer<float>& buffer, const Controls&
             mixTap[static_cast<size_t> (write.startIndex2 + i)] = 0.5f * (left[write.blockSize1 + i] + right[write.blockSize1 + i]);
     }
     mixFast.store (transport.isPlaying ? mixMeter.getFast() : silentLufs);
+    silentMixSamples = transport.isPlaying && ! (mixMeter.getFast() > silenceLufs) ? silentMixSamples + n : 0;
+    mixSilent.store (static_cast<double> (silentMixSamples) >= silentMixSeconds * sampleRate);
     playing.store (transport.isPlaying);
     updateMatching (controls, sources);
 

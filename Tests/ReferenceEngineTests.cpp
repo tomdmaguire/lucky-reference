@@ -131,17 +131,34 @@ public:
             expectEquals (harness.engine.getPosition (0), juce::int64 { blockSize * 20 });
         }
 
-        beginTest ("Before the first mix estimate the reference is silent, then fades in matched");
+        beginTest ("Before the first mix estimate the reference plays at the fallback level, then glides to the match");
         {
             Harness harness;
             harness.engine.setSlot (0, loudReference, {});
             harness.controls = { true, 0, true };
             const auto output = harness.run (test::sine (-20.0f, 4.0, rate));
-            const auto afterMixFade = static_cast<int> (0.05 * rate), beforeEstimate = static_cast<int> (1.4 * rate);
-            const auto level = output.getMagnitude (0, afterMixFade, beforeEstimate - afterMixFade);
-            expect (level < 1.0e-4f, "level before estimate " + juce::String (level));
+            const auto afterFade = static_cast<int> (0.4 * rate), beforeEstimate = static_cast<int> (1.4 * rate);
+            expectWithinAbsoluteError (LoudnessMeter::measure (output, afterFade, beforeEstimate - afterFade, rate),
+                                       ReferenceEngine::fallbackMixLufs, 0.3f);
             expect (! harness.engine.isMeasuring());
-            expectWithinAbsoluteError (loudnessOfEnd (output, 2.0), -20.0f, 0.3f);
+            expectWithinAbsoluteError (loudnessOfEnd (output, 1.0), -20.0f, 0.3f);
+        }
+
+        beginTest ("A silent mix plays the reference at the fallback level and is reported as silent");
+        {
+            Harness harness;
+            harness.engine.setSlot (0, loudReference, {});
+            harness.controls = { true, 0, true };
+            const auto output = harness.run (test::sine (-200.0f, 4.0, rate));
+            expectWithinAbsoluteError (loudnessOfEnd (output, 2.0), ReferenceEngine::fallbackMixLufs, 0.3f);
+            expect (harness.engine.isMeasuring());
+            expect (harness.engine.isMixSilent());
+
+            harness.run (test::sine (-20.0f, 0.2, rate));
+            expect (! harness.engine.isMixSilent());
+            harness.transport.isPlaying = false;
+            harness.run (test::sine (-200.0f, 1.0, rate));
+            expect (! harness.engine.isMixSilent());
         }
 
         beginTest ("With Match off the reference plays straight away");

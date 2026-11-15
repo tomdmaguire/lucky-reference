@@ -4,6 +4,7 @@
 
 - **1.0:** Lucky Reference now numbers its versions like Lucky Seven and Lucky Comp.
 - **Audio Unit:** Lucky Reference now comes as an AU too, for Logic Pro, GarageBand and other AU hosts. The installer lets you choose the formats.
+- A reference now plays while your mix is silent (say, every track muted while you set up), at a safe −18 LUFS, instead of staying silent. The readout says your mix is silent.
 - Swapping or reloading a reference while you listen no longer plays it too loud for a moment; it fades in at the right level.
 - Tooltips now show.
 - CLOSEST no longer favours files at your session's sample rate: a 44.1 kHz rip and a 48 kHz file of the same song now rank the same. Your library is analysed again once.

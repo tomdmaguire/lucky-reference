@@ -20,6 +20,11 @@ public:
     static constexpr double minimumMixSeconds = 1.5;
     static constexpr double readyFadeSeconds = 0.15;
     static constexpr float maximumGainDb = 24.0f;
+    /** Mix loudness a matched reference is played at until the mix has been measured, so it is audible but never at a master's full level. */
+    static constexpr float fallbackMixLufs = -18.0f;
+    /** Below this K-weighted level the mix counts as silent (BS.1770's absolute gate). */
+    static constexpr float silenceLufs = -70.0f;
+    static constexpr double silentMixSeconds = 0.5;
 
     /** Per-block settings from the plugin's parameters. */
     struct Controls
@@ -63,14 +68,17 @@ public:
     /** K-weighted level in LUFS of the mix's latest 25 ms while the transport plays, or -infinity. */
     float getMixFast() const noexcept { return mixFast.load(); }
 
-    /** Gain in dB being applied to a slot's reference, including the fade-in before the first estimate (-infinity while silent). */
+    /** Gain in dB being applied to a slot's reference, matched to fallbackMixLufs before the first estimate (-infinity while silent). */
     float getAppliedGainDb (int slot) const noexcept { return appliedGainsDb[static_cast<size_t> (slot)].load(); }
 
     /** True while the host transport is playing. */
     bool isPlaying() const noexcept { return playing.load(); }
 
-    /** True until the mix has been measured long enough to match against. */
+    /** True until the mix has been measured long enough to match against; matched references play at fallbackMixLufs meanwhile. */
     bool isMeasuring() const noexcept { return ! std::isfinite (getMixLoudness()); }
+
+    /** True while the transport plays and the mix has been silent for the last silentMixSeconds. */
+    bool isMixSilent() const noexcept { return mixSilent.load(); }
 
     /** Message thread: copies up to maxSamples of the mono mix played since the last call into dest and returns how
         many were copied. Only audio heard while the transport plays is kept, so this follows the mix as performed. */
@@ -112,6 +120,8 @@ private:
     bool wasMatching = true;
     bool wasPlaying = false;
     std::atomic<bool> playing { false };
+    juce::int64 silentMixSamples = 0;
+    std::atomic<bool> mixSilent { false };
     std::optional<juce::int64> expectedTime;
     juce::AudioBuffer<float> scratch;
     /** Mono mix for tonal analysis, about 10 s at 48 kHz, allocated once so prepare never reallocates it under a reader. */
