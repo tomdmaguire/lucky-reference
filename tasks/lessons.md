@@ -43,3 +43,7 @@ Carried over from Lucky Reverb where they apply.
 ## Never take text focus in a plug-in unasked
 - **Mistake:** the library focused its search box on open, so the host's space bar typed into it instead of stopping playback.
 - **Rule:** a text field only takes focus when clicked, and clicking elsewhere gives it up. Panels hold focus themselves and handle only their own keys, so everything else reaches the host.
+
+## Regenerate screenshots with the script, never by guessing modes
+- **Mistake:** during the rename I re-rendered `reference.png` with the static `reference` snapshot mode, so the hero lost the radar ripples it had been rendered with (`playing` mode) on purpose.
+- **Rule:** regenerate docs screenshots only with `tools/render-screenshots.sh`. Before replacing any screenshot, look at the old one and match what it shows (state, animation, selection); if a new screenshot is needed, add its mode to the script.
