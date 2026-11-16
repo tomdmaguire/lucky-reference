@@ -46,4 +46,4 @@ Carried over from Lucky Reverb where they apply.
 
 ## Regenerate screenshots with the script, never by guessing modes
 - **Mistake:** during the rename I re-rendered `reference.png` with the static `reference` snapshot mode, so the hero lost the radar ripples it had been rendered with (`playing` mode) on purpose.
-- **Rule:** regenerate docs screenshots only with `tools/render-screenshots.sh`. Before replacing any screenshot, look at the old one and match what it shows (state, animation, selection); if a new screenshot is needed, add its mode to the script.
+- **Rule:** regenerate docs screenshots only with `tools/render-screenshots.sh`; settle times matter (0.3 s leaves busy rings across the readout, 1.3 s gives the clean ones). Before replacing any screenshot, look at the old one and match what it shows (state, animation, selection); if a new screenshot is needed, add its mode to the script.
