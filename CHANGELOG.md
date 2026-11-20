@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.1.0
 
 - Closing the plug-in window no longer switches back to your mix. Leave the reference on and use your DAW's device on/off to flip between your mix and the reference without opening the window.
 
