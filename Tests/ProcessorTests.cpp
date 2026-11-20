@@ -108,7 +108,7 @@ public:
             expect (output.getMagnitude (0, output.getNumSamples() - blockSize * 4, blockSize) > 0.05f);
         }
 
-        beginTest ("Closing the window switches back to the mix");
+        beginTest ("Closing the window keeps the chosen source");
         {
             auto processor = makeProcessor();
             auto& parameters = processor->getParameters();
@@ -118,11 +118,11 @@ public:
             setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
             processor->editorBeingDeleted (editor.get());
             editor.reset();
-            expect (! referenceOn());
+            expect (referenceOn());
             expect (processor->getActiveEditor() == nullptr);
 
-            setParameter (*processor, LuckyReferenceProcessor::referenceId, 1.0f);
-            expect (referenceOn(), "the switch still works from the host with the window closed");
+            setParameter (*processor, LuckyReferenceProcessor::referenceId, 0.0f);
+            expect (! referenceOn(), "the switch still works from the host with the window closed");
         }
 
         beginTest ("Offline exports always contain the mix");

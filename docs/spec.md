@@ -35,7 +35,7 @@ mix bus → [master chain, e.g. Ozone] → Lucky Reference → (monitor correcti
 - Each slot has a colour from the Lucky family palette: slot 1 is Lucky Reverb's gold, slot 2 pink, slot 3 green.
 - Browsing for a file starts in this slot's folder, else the folder of a reference in another slot (usually the project's), else the last folder a reference came from, else Music. Plugins can't ask the host for the project folder, so this is the closest guess.
 - References are linked by path, not copied into the project, so Ableton's Collect All and Save doesn't gather them. Keeping references in the library gives them a stable home (see Reference library). A slot whose file is missing on session load says so with the filename; clicking it opens a browser to relocate it.
-- Closing the plugin window switches back to the mix, so a reference never keeps playing out of sight. Switching from the host with the window closed still works.
+- Closing the plugin window leaves the switch where it is, so the reference can stay on and the host's device on/off toggles between mix and reference without opening the window. Switching from the host with the window closed still works.
 - Slots can be cleared and replaced. Hovering a loaded slot shows a × to remove its reference; Delete or Backspace removes the selected one, and the slot's right-click menu has "Remove reference".
 
 ### 2. Source switch (A/B)

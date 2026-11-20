@@ -467,8 +467,3 @@ LuckyReferenceEditor::LuckyReferenceEditor (LuckyReferenceProcessor& processorTo
     view.addWindowSizeMenu = [this] (juce::PopupMenu& menu) { ScaledEditor::addWindowSizeMenu (menu); };
     setView (view);
 }
-
-LuckyReferenceEditor::~LuckyReferenceEditor()
-{
-    static_cast<LuckyReferenceProcessor&> (processor).switchToMix();
-}

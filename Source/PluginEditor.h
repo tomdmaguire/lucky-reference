@@ -84,7 +84,6 @@ class LuckyReferenceEditor final : public lucky::ScaledEditor
 {
 public:
     explicit LuckyReferenceEditor (LuckyReferenceProcessor&);
-    ~LuckyReferenceEditor() override;
 
     /** Opens the LIBRARY tab, optionally sorted closest first. */
     void showLibrary (bool closest = false) { view.openLibrary (closest); }

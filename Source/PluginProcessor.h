@@ -56,9 +56,6 @@ public:
     /** Loads a file into a slot (0-2), replacing what was there; once decoded, its loudest autoLoopSeconds become the loop. */
     void loadFile (int slot, const juce::File& file);
 
-    /** Flips the A/B switch to the mix, as when the window closes, so a reference never keeps playing out of sight. */
-    void switchToMix();
-
     /** Points a slot at another copy of the same audio (e.g. its copy in the library) without reloading it or
         touching its loop. */
     void relinkFile (int slot, const juce::File& file);
